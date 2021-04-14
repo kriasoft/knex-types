@@ -80,9 +80,9 @@ test("updateTypes", async function () {
       name_null?: Knex.Raw | string | null;
       roles: Knex.Raw | string[];
       roles_null?: Knex.Raw | string[] | null;
-      credentials?: Knex.Raw | Record<string, unknown>;
-      credentials_null?: Knex.Raw | unknown | null;
-      events?: Knex.Raw | unknown[];
+      credentials?: Knex.Raw | string;
+      credentials_null?: Knex.Raw | string | null;
+      events?: Knex.Raw | string;
       followers: Knex.Raw | number;
       followers_null?: Knex.Raw | number | null;
       created_at: Knex.Raw | Date | string;

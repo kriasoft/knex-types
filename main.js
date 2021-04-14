@@ -100,10 +100,10 @@ async function updateTypes(db, options) {
   }
 }
 
-function toType(c, enums, overrides, record = false) {
+function toType(c, enums, overrides, isRecord = false) {
   var _c$default, _c$default2;
 
-  let type = ["integer", "numeric", "decimal", "bigint"].includes(c.type) ? "number" : c.type === "boolean" ? "boolean" : c.type === "jsonb" ? (_c$default = c.default) !== null && _c$default !== void 0 && _c$default.startsWith("'{") ? "Record<string, unknown>" : (_c$default2 = c.default) !== null && _c$default2 !== void 0 && _c$default2.startsWith("'[") ? "unknown[]" : "unknown" : c.type === "ARRAY" && c.udt === "_text" ? "string[]" : c.type.startsWith("timestamp") || c.type === "date" ? "Date" : "string";
+  let type = ["integer", "numeric", "decimal", "bigint"].includes(c.type) ? "number" : c.type === "boolean" ? "boolean" : c.type === "jsonb" ? isRecord ? "string" : (_c$default = c.default) !== null && _c$default !== void 0 && _c$default.startsWith("'{") ? "Record<string, unknown>" : (_c$default2 = c.default) !== null && _c$default2 !== void 0 && _c$default2.startsWith("'[") ? "unknown[]" : "unknown" : c.type === "ARRAY" && c.udt === "_text" ? "string[]" : c.type.startsWith("timestamp") || c.type === "date" ? "Date" : "string";
 
   if (c.type === "USER-DEFINED") {
     var _enums$find;
@@ -117,9 +117,9 @@ function toType(c, enums, overrides, record = false) {
     }
   }
 
-  if (type === "Date" && record) {
+  if (type === "Date" && isRecord) {
     type = "Date | string";
   }
 
-  return `${record ? "Knex.Raw | " : ""}${type}${c.nullable ? " | null" : ""}`;
+  return `${isRecord ? "Knex.Raw | " : ""}${type}${c.nullable ? " | null" : ""}`;
 }

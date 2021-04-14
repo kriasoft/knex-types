@@ -146,14 +146,16 @@ function toType(
   c: Column,
   enums: Enum[],
   overrides: Record<string, string>,
-  record = false
+  isRecord = false
 ): string {
   let type = ["integer", "numeric", "decimal", "bigint"].includes(c.type)
     ? "number"
     : c.type === "boolean"
     ? "boolean"
     : c.type === "jsonb"
-    ? c.default?.startsWith("'{")
+    ? isRecord
+      ? "string"
+      : c.default?.startsWith("'{")
       ? "Record<string, unknown>"
       : c.default?.startsWith("'[")
       ? "unknown[]"
@@ -171,9 +173,11 @@ function toType(
     }
   }
 
-  if (type === "Date" && record) {
+  if (type === "Date" && isRecord) {
     type = "Date | string";
   }
 
-  return `${record ? "Knex.Raw | " : ""}${type}${c.nullable ? " | null" : ""}`;
+  return `${isRecord ? "Knex.Raw | " : ""}${type}${
+    c.nullable ? " | null" : ""
+  }`;
 }
