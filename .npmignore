@@ -1,0 +1,11 @@
+.github
+.vscode
+.yarn
+.eslintrc.js
+.pnp.js
+.prettierignore
+.yarnrc.yml
+babel.config.js
+main.test.ts
+main.ts
+tsconfig.json

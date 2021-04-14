@@ -1,0 +1,17 @@
+name: PR
+
+on:
+  pull_request:
+    branches: [main]
+
+env:
+  CI: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: yarn install
+      - run: yarn prettier --check .
+      - run: yarn lint --no-cache
