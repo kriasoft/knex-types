@@ -96,6 +96,7 @@ async function updateTypes(db, options) {
     });
   } finally {
     output.end();
+    db.destroy();
   }
 }
 

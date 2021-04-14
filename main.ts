@@ -124,6 +124,7 @@ export async function updateTypes(db: Knex, options: Options): Promise<void> {
     });
   } finally {
     output.end();
+    db.destroy();
   }
 }
 
