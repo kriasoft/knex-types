@@ -32,7 +32,8 @@ Find an example of generated types in [`./main.test.ts`](./main.test.ts).
 
 ## Related Projects
 
-- [GraphQL API Starter Kit](https://github.com/kriasoft/graphql-starter) — project template, pre-configured with TypeScript, GraphQL.js, React, and Relay.
+- [GraphQL API Starter Kit](https://github.com/kriasoft/graphql-starter) — monorepo template, pre-configured with TypeScript, GraphQL.js, React, and Relay
+- [Node.js API Starter Kit](https://github.com/kriasoft/node-starter-kit) — Node.js project template (PostgreSQL, Knex, OAuth 2.0, emails, Cloud Functions)
 
 ## How to Contribute
 
