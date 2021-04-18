@@ -160,7 +160,7 @@ function toType(
       : c.default?.startsWith("'[")
       ? "unknown[]"
       : "unknown"
-    : c.type === "ARRAY" && c.udt === "_text"
+    : c.type === "ARRAY" && (c.udt === "_text" || c.udt === "_citext")
     ? "string[]"
     : c.type.startsWith("timestamp") || c.type === "date"
     ? "Date"

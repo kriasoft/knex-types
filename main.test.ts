@@ -11,9 +11,7 @@ beforeAll(async function setup() {
   await createDatabase();
 
   await db.raw(`CREATE DOMAIN user_id AS TEXT CHECK(VALUE ~ '^[0-9a-z]{6}$')`);
-  await db.raw(
-    "CREATE TYPE identity_provider AS ENUM ('google', 'facebook', 'linkedin')"
-  );
+  await db.raw(`CREATE TYPE identity_provider AS ENUM ('google', 'facebook', 'linkedin')`); // prettier-ignore
 
   await db.schema.createTable("user", (table) => {
     table.specificType("id", "user_id").notNullable().primary();
@@ -21,6 +19,7 @@ beforeAll(async function setup() {
     table.text("name_null");
     table.specificType("roles", "text[]").notNullable();
     table.specificType("roles_null", "text[]");
+    table.specificType("roles_citext", "citext[]").notNullable();
     table.jsonb("credentials").notNullable().defaultTo("{}");
     table.jsonb("credentials_null");
     table.jsonb("events").notNullable().defaultTo("[]");
@@ -65,6 +64,7 @@ test("updateTypes", async function () {
       name_null: string | null;
       roles: string[];
       roles_null: string[] | null;
+      roles_citext: string[];
       credentials: Record<string, unknown>;
       credentials_null: unknown | null;
       events: unknown[];
@@ -80,6 +80,7 @@ test("updateTypes", async function () {
       name_null?: Knex.Raw | string | null;
       roles: Knex.Raw | string[];
       roles_null?: Knex.Raw | string[] | null;
+      roles_citext: Knex.Raw | string[];
       credentials?: Knex.Raw | string;
       credentials_null?: Knex.Raw | string | null;
       events?: Knex.Raw | string;
@@ -108,8 +109,11 @@ async function createDatabase(): Promise<void> {
     }
   }
 
-  await db.schema.raw("drop schema if exists public cascade");
-  await db.schema.raw("create schema public");
+  await db.schema.raw("DROP SCHEMA IF EXISTS public CASCADE");
+  await db.schema.raw("CREATE SCHEMA public");
+  await db.raw(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
+  await db.raw(`CREATE EXTENSION IF NOT EXISTS "hstore"`);
+  await db.raw(`CREATE EXTENSION IF NOT EXISTS "citext"`);
 }
 
 function toString(stream: PassThrough): Promise<string> {
