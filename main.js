@@ -4,6 +4,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.updateTypes = updateTypes;
+exports.getType = getType;
 
 var _camelCase2 = _interopRequireDefault(require("lodash/camelCase"));
 
@@ -27,7 +28,12 @@ async function updateTypes(db, options) {
   const output = typeof options.output === "string" ? _fs.default.createWriteStream(options.output, {
     encoding: "utf-8"
   }) : options.output;
-  ["// The TypeScript definitions below are automatically generated.\n", "// Do not touch them, or risk, your modifications being lost.\n\n", 'import { Knex } from "knex";\n\n'].forEach(line => output.write(line));
+  ["// The TypeScript definitions below are automatically generated.\n", "// Do not touch them, or risk, your modifications being lost.\n\n"].forEach(line => output.write(line));
+
+  if (options.prefix) {
+    output.write(options.prefix);
+    output.write("\n\n");
+  }
 
   try {
     // Fetch the list of custom enum types
@@ -51,7 +57,12 @@ async function updateTypes(db, options) {
       if (!(enums[i + 1] && enums[i + 1].key === x.key)) {
         output.write("}\n\n");
       }
-    }); // Fetch the list of tables/columns
+    });
+    const enumsMap = new Map(enums.map(x => {
+      var _overrides$x$key2;
+
+      return [x.key, (_overrides$x$key2 = overrides[x.key]) !== null && _overrides$x$key2 !== void 0 ? _overrides$x$key2 : (0, _upperFirst2.default)((0, _camelCase2.default)(x.key))];
+    })); // Fetch the list of tables/columns
 
     const columns = await db.withSchema("information_schema").table("columns").where("table_schema", "public").orderBy("table_name").orderBy("ordinal_position").select("table_name as table", "column_name as column", db.raw("(is_nullable = 'YES') as nullable"), "column_default as default", "data_type as type", "udt_name as udt"); // The list of database tables as enum
 
@@ -72,23 +83,13 @@ async function updateTypes(db, options) {
         output.write(`export type ${tableName} = {\n`);
       }
 
-      output.write(`  ${x.column}: ${toType(x, enums, overrides)};\n`);
+      let type = x.type === "ARRAY" ? `${getType(x.udt.substring(1), enumsMap, x.default)}[]` : getType(x.udt, enumsMap, x.default);
 
-      if (!(columns[i + 1] && columns[i + 1].table === x.table)) {
-        output.write("};\n\n");
-      }
-    }); // Construct TypeScript db record types
-
-    columns.forEach((x, i) => {
-      if (!(columns[i - 1] && columns[i - 1].table === x.table)) {
-        var _overrides$x$table2;
-
-        const tableName = (_overrides$x$table2 = overrides[x.table]) !== null && _overrides$x$table2 !== void 0 ? _overrides$x$table2 : (0, _upperFirst2.default)((0, _camelCase2.default)(x.table));
-        output.write(`export type ${tableName}Record = {\n`);
+      if (x.nullable) {
+        type += " | null";
       }
 
-      const optional = x.nullable || x.default !== null ? "?" : "";
-      output.write(`  ${x.column}${optional}: ${toType(x, enums, overrides, true)};\n`);
+      output.write(`  ${x.column}: ${type};\n`);
 
       if (!(columns[i + 1] && columns[i + 1].table === x.table)) {
         output.write("};\n\n");
@@ -100,26 +101,68 @@ async function updateTypes(db, options) {
   }
 }
 
-function toType(c, enums, overrides, isRecord = false) {
-  var _c$default, _c$default2;
+function getType(udt, customTypes, defaultValue) {
+  var _customTypes$get;
 
-  let type = ["integer", "numeric", "decimal", "bigint"].includes(c.type) ? "number" : c.type === "boolean" ? "boolean" : c.type === "jsonb" ? isRecord ? "string" : (_c$default = c.default) !== null && _c$default !== void 0 && _c$default.startsWith("'{") ? "Record<string, unknown>" : (_c$default2 = c.default) !== null && _c$default2 !== void 0 && _c$default2.startsWith("'[") ? "unknown[]" : "unknown" : c.type === "ARRAY" && (c.udt === "_text" || c.udt === "_citext") ? "string[]" : c.type.startsWith("timestamp") || c.type === "date" ? "Date" : "string";
+  switch (udt) {
+    case "bool":
+      return "boolean";
 
-  if (c.type === "USER-DEFINED") {
-    var _enums$find;
+    case "text":
+    case "citext":
+    case "money":
+    case "numeric":
+    case "int8":
+    case "char":
+    case "character":
+    case "bpchar":
+    case "varchar":
+    case "time":
+    case "tsquery":
+    case "tsvector":
+    case "uuid":
+    case "xml":
+    case "cidr":
+    case "inet":
+    case "macaddr":
+      return "string";
 
-    const key = (_enums$find = enums.find(x => x.key === c.udt)) === null || _enums$find === void 0 ? void 0 : _enums$find.key;
+    case "smallint":
+    case "integer":
+    case "int":
+    case "int4":
+    case "real":
+    case "float":
+    case "float4":
+    case "float8":
+      return "number";
 
-    if (key) {
-      var _overrides$key;
+    case "date":
+    case "timestamp":
+    case "timestamptz":
+      return "Date";
 
-      type = (_overrides$key = overrides[key]) !== null && _overrides$key !== void 0 ? _overrides$key : (0, _upperFirst2.default)((0, _camelCase2.default)(key));
-    }
+    case "json":
+    case "jsonb":
+      if (defaultValue) {
+        if (defaultValue.startsWith("'{")) {
+          return "Record<string, unknown>";
+        }
+
+        if (defaultValue.startsWith("'[")) {
+          return "unknown[]";
+        }
+      }
+
+      return "unknown";
+
+    case "bytea":
+      return "Buffer";
+
+    case "interval":
+      return "PostgresInterval";
+
+    default:
+      return (_customTypes$get = customTypes.get(udt)) !== null && _customTypes$get !== void 0 ? _customTypes$get : "unknown";
   }
-
-  if (type === "Date" && isRecord) {
-    type = "Date | string";
-  }
-
-  return `${isRecord ? "Knex.Raw | " : ""}${type}${c.nullable ? " | null" : ""}`;
 }

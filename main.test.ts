@@ -10,23 +10,51 @@ const db = knex({ client: "pg", connection: { database: "update_types" } });
 beforeAll(async function setup() {
   await createDatabase();
 
-  await db.raw(`CREATE DOMAIN user_id AS TEXT CHECK(VALUE ~ '^[0-9a-z]{6}$')`);
+  await db.raw(`CREATE DOMAIN short_id AS TEXT CHECK(VALUE ~ '^[0-9a-z]{6}$')`);
   await db.raw(`CREATE TYPE identity_provider AS ENUM ('google', 'facebook', 'linkedin')`); // prettier-ignore
 
   await db.schema.createTable("user", (table) => {
-    table.specificType("id", "user_id").notNullable().primary();
-    table.text("name").notNullable();
-    table.text("name_null");
-    table.specificType("roles", "text[]").notNullable();
-    table.specificType("roles_null", "text[]");
-    table.specificType("roles_citext", "citext[]").notNullable();
-    table.jsonb("credentials").notNullable().defaultTo("{}");
-    table.jsonb("credentials_null");
-    table.jsonb("events").notNullable().defaultTo("[]");
-    table.integer("followers").notNullable();
-    table.integer("followers_null");
-    table.timestamp("created_at").notNullable();
-    table.timestamp("deleted_at");
+    table.increments("int").notNullable().primary();
+    table.specificType("provider", "identity_provider").notNullable();
+    table.specificType("provider_null", "identity_provider");
+    table.specificType("provider_array", "identity_provider[]").notNullable();
+    table.specificType("int_array", "integer[]").notNullable();
+    table.specificType("short_id", "short_id").notNullable();
+    table.decimal("decimal").notNullable();
+    table.specificType("decimal_array", "decimal[]").notNullable();
+    table.double("double").notNullable();
+    table.specificType("double_array", "float8[]").notNullable();
+    table.float("float").notNullable();
+    table.specificType("float_array", "float4[]").notNullable();
+    table.specificType("money", "money").notNullable();
+    table.bigInteger("bigint").notNullable();
+    table.binary("binary").notNullable();
+    table.binary("binary_null");
+    table.specificType("binary_array", "bytea[]").notNullable();
+    table.uuid("uuid").notNullable();
+    table.uuid("uuid_null");
+    table.specificType("uuid_array", "uuid[]").notNullable();
+    table.text("text").notNullable();
+    table.text("text_null");
+    table.specificType("text_array", "text[]").notNullable();
+    table.specificType("citext", "citext").notNullable();
+    table.specificType("citext_null", "citext");
+    table.specificType("citext_array", "citext[]").notNullable();
+    table.specificType("char", "char(2)").notNullable();
+    table.string("varchar", 10).notNullable();
+    table.boolean("bool").notNullable();
+    table.boolean("bool_null");
+    table.specificType("bool_array", "bool[]").notNullable();
+    table.jsonb("jsonb_object").notNullable().defaultTo("{}");
+    table.jsonb("jsonb_object_null").defaultTo("{}");
+    table.jsonb("jsonb_array").notNullable().defaultTo("[]");
+    table.jsonb("jsonb_array_null").defaultTo("[]");
+    table.timestamp("timestamp").notNullable();
+    table.timestamp("timestamp_null");
+    table.time("time").notNullable();
+    table.time("time_null");
+    table.specificType("time_array", "time[]").notNullable();
+    table.specificType("interval", "interval").notNullable();
   });
 });
 
@@ -40,13 +68,15 @@ test("updateTypes", async function () {
     "identity_provider.linkedin": "LinkedIn",
   };
 
-  await updateTypes(db, { output, overrides });
+  const prefix = 'import { PostgresInterval} from "postgres-interval";';
+
+  await updateTypes(db, { output, overrides, prefix });
 
   expect(await toString(output)).toMatchInlineSnapshot(`
     "// The TypeScript definitions below are automatically generated.
     // Do not touch them, or risk, your modifications being lost.
 
-    import { Knex } from \\"knex\\";
+    import { PostgresInterval} from \\"postgres-interval\\";
 
     export enum IdentityProvider {
       Google = \\"google\\",
@@ -59,35 +89,47 @@ test("updateTypes", async function () {
     }
 
     export type User = {
-      id: string;
-      name: string;
-      name_null: string | null;
-      roles: string[];
-      roles_null: string[] | null;
-      roles_citext: string[];
-      credentials: Record<string, unknown>;
-      credentials_null: unknown | null;
-      events: unknown[];
-      followers: number;
-      followers_null: number | null;
-      created_at: Date;
-      deleted_at: Date | null;
-    };
-
-    export type UserRecord = {
-      id: Knex.Raw | string;
-      name: Knex.Raw | string;
-      name_null?: Knex.Raw | string | null;
-      roles: Knex.Raw | string[];
-      roles_null?: Knex.Raw | string[] | null;
-      roles_citext: Knex.Raw | string[];
-      credentials?: Knex.Raw | string;
-      credentials_null?: Knex.Raw | string | null;
-      events?: Knex.Raw | string;
-      followers: Knex.Raw | number;
-      followers_null?: Knex.Raw | number | null;
-      created_at: Knex.Raw | Date | string;
-      deleted_at?: Knex.Raw | Date | string | null;
+      int: number;
+      provider: IdentityProvider;
+      provider_null: IdentityProvider | null;
+      provider_array: IdentityProvider[];
+      int_array: number[];
+      short_id: string;
+      decimal: string;
+      decimal_array: string[];
+      double: number;
+      double_array: number[];
+      float: number;
+      float_array: number[];
+      money: string;
+      bigint: string;
+      binary: Buffer;
+      binary_null: Buffer | null;
+      binary_array: Buffer[];
+      uuid: string;
+      uuid_null: string | null;
+      uuid_array: string[];
+      text: string;
+      text_null: string | null;
+      text_array: string[];
+      citext: string;
+      citext_null: string | null;
+      citext_array: string[];
+      char: string;
+      varchar: string;
+      bool: boolean;
+      bool_null: boolean | null;
+      bool_array: boolean[];
+      jsonb_object: Record<string, unknown>;
+      jsonb_object_null: Record<string, unknown> | null;
+      jsonb_array: unknown[];
+      jsonb_array_null: unknown[] | null;
+      timestamp: Date;
+      timestamp_null: Date | null;
+      time: string;
+      time_null: string | null;
+      time_array: string[];
+      interval: PostgresInterval;
     };
 
     "

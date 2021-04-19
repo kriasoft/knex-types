@@ -15,8 +15,10 @@ export declare type Options = {
      *   }
      */
     overrides?: Record<string, string>;
+    prefix?: string;
 };
 /**
  * Generates TypeScript definitions (types) from a PostgreSQL database schema.
  */
 export declare function updateTypes(db: Knex, options: Options): Promise<void>;
+export declare function getType(udt: string, customTypes: Map<string, string>, defaultValue: string | null): string;

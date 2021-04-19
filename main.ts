@@ -21,6 +21,8 @@ export type Options = {
    *   }
    */
   overrides?: Record<string, string>;
+
+  prefix?: string;
 };
 
 /**
@@ -36,8 +38,12 @@ export async function updateTypes(db: Knex, options: Options): Promise<void> {
   [
     "// The TypeScript definitions below are automatically generated.\n",
     "// Do not touch them, or risk, your modifications being lost.\n\n",
-    'import { Knex } from "knex";\n\n',
   ].forEach((line) => output.write(line));
+
+  if (options.prefix) {
+    output.write(options.prefix);
+    output.write("\n\n");
+  }
 
   try {
     // Fetch the list of custom enum types
@@ -67,6 +73,13 @@ export async function updateTypes(db: Knex, options: Options): Promise<void> {
         output.write("}\n\n");
       }
     });
+
+    const enumsMap = new Map(
+      enums.map((x) => [
+        x.key,
+        overrides[x.key] ?? upperFirst(camelCase(x.key)),
+      ])
+    );
 
     // Fetch the list of tables/columns
     const columns = await db
@@ -99,24 +112,16 @@ export async function updateTypes(db: Knex, options: Options): Promise<void> {
         output.write(`export type ${tableName} = {\n`);
       }
 
-      output.write(`  ${x.column}: ${toType(x, enums, overrides)};\n`);
+      let type =
+        x.type === "ARRAY"
+          ? `${getType(x.udt.substring(1), enumsMap, x.default)}[]`
+          : getType(x.udt, enumsMap, x.default);
 
-      if (!(columns[i + 1] && columns[i + 1].table === x.table)) {
-        output.write("};\n\n");
-      }
-    });
-
-    // Construct TypeScript db record types
-    columns.forEach((x, i) => {
-      if (!(columns[i - 1] && columns[i - 1].table === x.table)) {
-        const tableName = overrides[x.table] ?? upperFirst(camelCase(x.table));
-        output.write(`export type ${tableName}Record = {\n`);
+      if (x.nullable) {
+        type += " | null";
       }
 
-      const optional = x.nullable || x.default !== null ? "?" : "";
-      output.write(
-        `  ${x.column}${optional}: ${toType(x, enums, overrides, true)};\n`
-      );
+      output.write(`  ${x.column}: ${type};\n`);
 
       if (!(columns[i + 1] && columns[i + 1].table === x.table)) {
         output.write("};\n\n");
@@ -142,42 +147,61 @@ type Column = {
   udt: string;
 };
 
-function toType(
-  c: Column,
-  enums: Enum[],
-  overrides: Record<string, string>,
-  isRecord = false
+export function getType(
+  udt: string,
+  customTypes: Map<string, string>,
+  defaultValue: string | null
 ): string {
-  let type = ["integer", "numeric", "decimal", "bigint"].includes(c.type)
-    ? "number"
-    : c.type === "boolean"
-    ? "boolean"
-    : c.type === "jsonb"
-    ? isRecord
-      ? "string"
-      : c.default?.startsWith("'{")
-      ? "Record<string, unknown>"
-      : c.default?.startsWith("'[")
-      ? "unknown[]"
-      : "unknown"
-    : c.type === "ARRAY" && (c.udt === "_text" || c.udt === "_citext")
-    ? "string[]"
-    : c.type.startsWith("timestamp") || c.type === "date"
-    ? "Date"
-    : "string";
-
-  if (c.type === "USER-DEFINED") {
-    const key = enums.find((x) => x.key === c.udt)?.key;
-    if (key) {
-      type = overrides[key] ?? upperFirst(camelCase(key));
-    }
+  switch (udt) {
+    case "bool":
+      return "boolean";
+    case "text":
+    case "citext":
+    case "money":
+    case "numeric":
+    case "int8":
+    case "char":
+    case "character":
+    case "bpchar":
+    case "varchar":
+    case "time":
+    case "tsquery":
+    case "tsvector":
+    case "uuid":
+    case "xml":
+    case "cidr":
+    case "inet":
+    case "macaddr":
+      return "string";
+    case "smallint":
+    case "integer":
+    case "int":
+    case "int4":
+    case "real":
+    case "float":
+    case "float4":
+    case "float8":
+      return "number";
+    case "date":
+    case "timestamp":
+    case "timestamptz":
+      return "Date";
+    case "json":
+    case "jsonb":
+      if (defaultValue) {
+        if (defaultValue.startsWith("'{")) {
+          return "Record<string, unknown>";
+        }
+        if (defaultValue.startsWith("'[")) {
+          return "unknown[]";
+        }
+      }
+      return "unknown";
+    case "bytea":
+      return "Buffer";
+    case "interval":
+      return "PostgresInterval";
+    default:
+      return customTypes.get(udt) ?? "unknown";
   }
-
-  if (type === "Date" && isRecord) {
-    type = "Date | string";
-  }
-
-  return `${isRecord ? "Knex.Raw | " : ""}${type}${
-    c.nullable ? " | null" : ""
-  }`;
 }
