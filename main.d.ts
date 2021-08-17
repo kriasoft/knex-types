@@ -10,8 +10,8 @@ export declare type Options = {
      * Name overrides for enums, classes, and fields.
      *
      * @example
-     *   {
-     *     overrides: { "identity_provider.linkedin": "LinkedIn" }
+     *   overrides: {
+     *     "identity_provider.linkedin": "LinkedIn"
      *   }
      */
     overrides?: Record<string, string>;
@@ -19,26 +19,28 @@ export declare type Options = {
     /**
      * Schemas that should be included/excluded when generating types.
      *
-     * By default if this is null/not specified, 'public' will be the only schema added, but if this property
+     * By default if this is null/not specified, "public" will be the only schema added, but if this property
      * is specified, public will be excluded by default and has to be included in the list to be added to the output.
      * If a schema is added by its name, i.e. 'log' all tables from that schema will be added.
-     * If a schema name is added with an exclamation mark it will be ignored, i.e. '!log'.
+     * If a schema name is added with an exclamation mark it will be ignored, i.e. "!log".
      *
      * The table-type will be prefixed by its schema name, the table log.message will become LogMessage.
      *
      * @example
-     *   ['public', 'log', '!secret']
-     *
-     *   This will include public and log, but exclude the secret schema.
+     *   // This will include "public" and "log", but exclude the "auth" schema.
+     *   schema: ["public", "log", "!auth"]
+     * @default
+     *   "public"
      */
-    schemas?: string[];
+    schema?: string[] | string;
     /**
-     * Tables that should be skipped when generating types.
+     * A comma separated list or an array of tables that should be excluded when
+     * generating types.
      *
      * @example
-     *   ['login']
+     *   exclude: ["migration", "migration_lock"]
      */
-    skip?: string[];
+    exclude?: string[] | string;
 };
 /**
  * Generates TypeScript definitions (types) from a PostgreSQL database schema.

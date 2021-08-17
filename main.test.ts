@@ -84,15 +84,12 @@ test("updateTypes", async function () {
     "identity_provider.linkedin": "LinkedIn",
   };
 
-  const prefix = 'import { PostgresInterval} from "postgres-interval";';
-  const includedSchemas = ["public", "log", "!secret"];
-  const skipTables = ["login"];
   await updateTypes(db, {
     output,
     overrides,
-    prefix,
-    schemas: includedSchemas,
-    skip: skipTables,
+    prefix: 'import { PostgresInterval} from "postgres-interval";',
+    schema: ["public", "log", "!secret"],
+    exclude: ["login"],
   });
 
   expect(await toString(output)).toMatchInlineSnapshot(`

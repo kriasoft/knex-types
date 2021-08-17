@@ -22,22 +22,18 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
  * Generates TypeScript definitions (types) from a PostgreSQL database schema.
  */
 async function updateTypes(db, options) {
-  var _options$overrides, _options$skip;
+  var _options$overrides, _ref, _ref2;
 
   const overrides = (_options$overrides = options.overrides) !== null && _options$overrides !== void 0 ? _options$overrides : {};
   const output = typeof options.output === "string" ? _fs.default.createWriteStream(options.output, {
     encoding: "utf-8"
   }) : options.output;
   ["// The TypeScript definitions below are automatically generated.\n", "// Do not touch them, or risk, your modifications being lost.\n\n"].forEach(line => output.write(line));
-  const includeSchemas = ["public"];
-  const excludeSchemas = [];
+  const schema = (_ref = typeof options.schema === "string" ? options.schema.split(",").map(x => x.trim()) : options.schema) !== null && _ref !== void 0 ? _ref : ["public"]; // Schemas to include or exclude
 
-  if (options.schemas) {
-    includeSchemas.length = 0;
-    options.schemas.forEach(x => (x[0] === "!" ? excludeSchemas : includeSchemas).push(x));
-  }
+  const [includeSchemas, excludeSchemas] = schema.reduce((acc, s) => acc[+s.startsWith("!")].push(s) && acc, [[], []]); // Tables to exclude
 
-  const skip = (_options$skip = options.skip) !== null && _options$skip !== void 0 ? _options$skip : [];
+  const exclude = (_ref2 = typeof options.exclude === "string" ? options.exclude.split(",").map(x => x.trim()) : options.exclude) !== null && _ref2 !== void 0 ? _ref2 : [];
 
   if (options.prefix) {
     output.write(options.prefix);
@@ -73,7 +69,7 @@ async function updateTypes(db, options) {
       return [x.key, (_overrides$x$key2 = overrides[x.key]) !== null && _overrides$x$key2 !== void 0 ? _overrides$x$key2 : (0, _upperFirst2.default)((0, _camelCase2.default)(x.key))];
     })); // Fetch the list of tables/columns
 
-    const columns = await db.withSchema("information_schema").table("columns").whereIn("table_schema", includeSchemas).whereNotIn("table_schema", excludeSchemas).whereNotIn("table_name", skip).orderBy("table_schema").orderBy("table_name").orderBy("ordinal_position").select("table_schema as schema", "table_name as table", "column_name as column", db.raw("(is_nullable = 'YES') as nullable"), "column_default as default", "data_type as type", "udt_name as udt"); // The list of database tables as enum
+    const columns = await db.withSchema("information_schema").table("columns").whereIn("table_schema", includeSchemas).whereNotIn("table_schema", excludeSchemas).whereNotIn("table_name", exclude).orderBy("table_schema").orderBy("table_name").orderBy("ordinal_position").select("table_schema as schema", "table_name as table", "column_name as column", db.raw("(is_nullable = 'YES') as nullable"), "column_default as default", "data_type as type", "udt_name as udt"); // The list of database tables as enum
 
     output.write("export enum Table {\n");
     const tableSet = new Set(columns.map(x => {
