@@ -16,6 +16,7 @@ export declare type Options = {
      */
     overrides?: Record<string, string>;
     prefix?: string;
+    includedSchemas?: string[];
 };
 /**
  * Generates TypeScript definitions (types) from a PostgreSQL database schema.

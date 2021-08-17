@@ -56,6 +56,13 @@ beforeAll(async function setup() {
     table.specificType("time_array", "time[]").notNullable();
     table.specificType("interval", "interval").notNullable();
   });
+
+    await db.schema.withSchema('log')
+        .createTable("messages", (table) => {
+        table.increments("int").notNullable().primary();
+        table.text("notes");
+        table.timestamp("timestamp").notNullable();
+    });
 });
 
 afterAll(async function teardown() {
@@ -69,8 +76,8 @@ test("updateTypes", async function () {
   };
 
   const prefix = 'import { PostgresInterval} from "postgres-interval";';
-
-  await updateTypes(db, { output, overrides, prefix });
+  const includedSchemas = ['public', 'log']
+  await updateTypes(db, { output, overrides, prefix, includedSchemas });
 
   expect(await toString(output)).toMatchInlineSnapshot(`
     "// The TypeScript definitions below are automatically generated.
@@ -85,8 +92,15 @@ test("updateTypes", async function () {
     }
 
     export enum Table {
+      LogMessages = \\"log.messages\\",
       User = \\"user\\",
     }
+    
+    export type LogMessages = {
+      int: number;
+      notes: string | null;
+      timestamp: Date;
+    };
 
     export type User = {
       int: number;
@@ -152,7 +166,9 @@ async function createDatabase(): Promise<void> {
   }
 
   await db.schema.raw("DROP SCHEMA IF EXISTS public CASCADE");
+  await db.schema.raw("DROP SCHEMA IF EXISTS log CASCADE");
   await db.schema.raw("CREATE SCHEMA public");
+  await db.schema.raw("CREATE SCHEMA log");
   await db.raw(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
   await db.raw(`CREATE EXTENSION IF NOT EXISTS "hstore"`);
   await db.raw(`CREATE EXTENSION IF NOT EXISTS "citext"`);

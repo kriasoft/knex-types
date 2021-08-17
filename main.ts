@@ -23,6 +23,8 @@ export type Options = {
   overrides?: Record<string, string>;
 
   prefix?: string;
+
+  includedSchemas?: string[];
 };
 
 /**
@@ -39,6 +41,8 @@ export async function updateTypes(db: Knex, options: Options): Promise<void> {
     "// The TypeScript definitions below are automatically generated.\n",
     "// Do not touch them, or risk, your modifications being lost.\n\n",
   ].forEach((line) => output.write(line));
+
+  const schemas: string[] = options.includedSchemas ? [...options.includedSchemas] : ['public'];
 
   if (options.prefix) {
     output.write(options.prefix);
@@ -85,10 +89,12 @@ export async function updateTypes(db: Knex, options: Options): Promise<void> {
     const columns = await db
       .withSchema("information_schema")
       .table("columns")
-      .where("table_schema", "public")
+      .whereIn('table_schema', schemas)
+      .orderBy("table_schema")
       .orderBy("table_name")
       .orderBy("ordinal_position")
       .select<Column[]>(
+        "table_schema as schema",
         "table_name as table",
         "column_name as column",
         db.raw("(is_nullable = 'YES') as nullable"),
@@ -99,7 +105,12 @@ export async function updateTypes(db: Knex, options: Options): Promise<void> {
 
     // The list of database tables as enum
     output.write("export enum Table {\n");
-    Array.from(new Set(columns.map((x) => x.table))).forEach((value) => {
+    const tableSet = new Set(columns.map((x) =>
+    {
+      const schema = x.schema !== 'public' ? `${x.schema}.` : ''
+      return `${schema}${x.table}`
+    }))
+    Array.from(tableSet).forEach((value) => {
       const key = overrides[value] ?? upperFirst(camelCase(value));
       output.write(`  ${key} = "${value}",\n`);
     });
@@ -109,7 +120,8 @@ export async function updateTypes(db: Knex, options: Options): Promise<void> {
     columns.forEach((x, i) => {
       if (!(columns[i - 1] && columns[i - 1].table === x.table)) {
         const tableName = overrides[x.table] ?? upperFirst(camelCase(x.table));
-        output.write(`export type ${tableName} = {\n`);
+        const schemaName = x.schema !== 'public' ? upperFirst(camelCase(x.schema)) : '';
+        output.write(`export type ${schemaName}${tableName} = {\n`);
       }
 
       let type =
@@ -141,6 +153,7 @@ type Enum = {
 type Column = {
   table: string;
   column: string;
+  schema: string;
   nullable: boolean;
   default: string | null;
   type: string;

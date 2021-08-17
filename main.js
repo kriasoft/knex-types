@@ -22,13 +22,14 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
  * Generates TypeScript definitions (types) from a PostgreSQL database schema.
  */
 async function updateTypes(db, options) {
-  var _options$overrides;
+  var _options$overrides, _options$includedSche;
 
   const overrides = (_options$overrides = options.overrides) !== null && _options$overrides !== void 0 ? _options$overrides : {};
   const output = typeof options.output === "string" ? _fs.default.createWriteStream(options.output, {
     encoding: "utf-8"
   }) : options.output;
   ["// The TypeScript definitions below are automatically generated.\n", "// Do not touch them, or risk, your modifications being lost.\n\n"].forEach(line => output.write(line));
+  const schemas = (_options$includedSche = options.includedSchemas) !== null && _options$includedSche !== void 0 ? _options$includedSche : ['public'];
 
   if (options.prefix) {
     output.write(options.prefix);
@@ -64,7 +65,7 @@ async function updateTypes(db, options) {
       return [x.key, (_overrides$x$key2 = overrides[x.key]) !== null && _overrides$x$key2 !== void 0 ? _overrides$x$key2 : (0, _upperFirst2.default)((0, _camelCase2.default)(x.key))];
     })); // Fetch the list of tables/columns
 
-    const columns = await db.withSchema("information_schema").table("columns").where("table_schema", "public").orderBy("table_name").orderBy("ordinal_position").select("table_name as table", "column_name as column", db.raw("(is_nullable = 'YES') as nullable"), "column_default as default", "data_type as type", "udt_name as udt"); // The list of database tables as enum
+    const columns = await db.withSchema("information_schema").table("columns").whereIn('table_schema', schemas).orderBy("table_name").orderBy("ordinal_position").select("table_name as table", "column_name as column", db.raw("(is_nullable = 'YES') as nullable"), "column_default as default", "data_type as type", "udt_name as udt"); // The list of database tables as enum
 
     output.write("export enum Table {\n");
     Array.from(new Set(columns.map(x => x.table))).forEach(value => {
