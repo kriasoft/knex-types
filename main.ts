@@ -25,6 +25,8 @@ export type Options = {
   prefix?: string;
 
   includedSchemas?: string[];
+
+  skipTables?: string[];
 };
 
 /**
@@ -43,6 +45,7 @@ export async function updateTypes(db: Knex, options: Options): Promise<void> {
   ].forEach((line) => output.write(line));
 
   const schemas: string[] = options.includedSchemas ? [...options.includedSchemas] : ['public'];
+  const skipTables: string[] = options.skipTables ?? [];
 
   if (options.prefix) {
     output.write(options.prefix);
@@ -90,6 +93,7 @@ export async function updateTypes(db: Knex, options: Options): Promise<void> {
       .withSchema("information_schema")
       .table("columns")
       .whereIn('table_schema', schemas)
+      .whereNotIn('table_name', skipTables)
       .orderBy("table_schema")
       .orderBy("table_name")
       .orderBy("ordinal_position")

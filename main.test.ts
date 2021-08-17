@@ -57,6 +57,10 @@ beforeAll(async function setup() {
     table.specificType("interval", "interval").notNullable();
   });
 
+  await db.schema.createTable("login", (table) => {
+    table.increments("secret").notNullable().primary();
+  });
+
     await db.schema.withSchema('log')
         .createTable("messages", (table) => {
         table.increments("int").notNullable().primary();
@@ -77,7 +81,8 @@ test("updateTypes", async function () {
 
   const prefix = 'import { PostgresInterval} from "postgres-interval";';
   const includedSchemas = ['public', 'log']
-  await updateTypes(db, { output, overrides, prefix, includedSchemas });
+  const skipTables = ['login']
+  await updateTypes(db, { output, overrides, prefix, includedSchemas, skipTables });
 
   expect(await toString(output)).toMatchInlineSnapshot(`
     "// The TypeScript definitions below are automatically generated.
