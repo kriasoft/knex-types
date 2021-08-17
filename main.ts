@@ -24,9 +24,30 @@ export type Options = {
 
   prefix?: string;
 
-  includedSchemas?: string[];
+  /**
+   * Schemas that should be included/excluded when generating types.
+   *
+   * By default if this is null/not specified, 'public' will be the only schema added, but if this property
+   * is specified, public will be excluded by default and has to be included in the list to be added to the output.
+   * If a schema is added by its name, i.e. 'log' all tables from that schema will be added.
+   * If a schema name is added with an exclamation mark it will be ignored, i.e. '!log'.
+   *
+   * The table-type will be prefixed by its schema name, the table log.message will become LogMessage.
+   *
+   * @example
+   *   ['public', 'log', '!secret']
+   *
+   *   This will include public and log, but exclude the secret schema.
+   */
+  schemas?: string[];
 
-  skipTables?: string[];
+  /**
+   * Tables that should be skipped when generating types.
+   *
+   * @example
+   *   ['login']
+   */
+  skip?: string[];
 };
 
 /**
@@ -44,8 +65,15 @@ export async function updateTypes(db: Knex, options: Options): Promise<void> {
     "// Do not touch them, or risk, your modifications being lost.\n\n",
   ].forEach((line) => output.write(line));
 
-  const schemas: string[] = options.includedSchemas ? [...options.includedSchemas] : ['public'];
-  const skipTables: string[] = options.skipTables ?? [];
+  const includeSchemas: string[] = ["public"];
+  const excludeSchemas: string[] = [];
+  if (options.schemas) {
+    includeSchemas.length = 0;
+    options.schemas.forEach((x) =>
+      (x[0] === "!" ? excludeSchemas : includeSchemas).push(x)
+    );
+  }
+  const skip: string[] = options.skip ?? [];
 
   if (options.prefix) {
     output.write(options.prefix);
@@ -92,8 +120,9 @@ export async function updateTypes(db: Knex, options: Options): Promise<void> {
     const columns = await db
       .withSchema("information_schema")
       .table("columns")
-      .whereIn('table_schema', schemas)
-      .whereNotIn('table_name', skipTables)
+      .whereIn("table_schema", includeSchemas)
+      .whereNotIn("table_schema", excludeSchemas)
+      .whereNotIn("table_name", skip)
       .orderBy("table_schema")
       .orderBy("table_name")
       .orderBy("ordinal_position")
@@ -109,11 +138,12 @@ export async function updateTypes(db: Knex, options: Options): Promise<void> {
 
     // The list of database tables as enum
     output.write("export enum Table {\n");
-    const tableSet = new Set(columns.map((x) =>
-    {
-      const schema = x.schema !== 'public' ? `${x.schema}.` : ''
-      return `${schema}${x.table}`
-    }))
+    const tableSet = new Set(
+      columns.map((x) => {
+        const schema = x.schema !== "public" ? `${x.schema}.` : "";
+        return `${schema}${x.table}`;
+      })
+    );
     Array.from(tableSet).forEach((value) => {
       const key = overrides[value] ?? upperFirst(camelCase(value));
       output.write(`  ${key} = "${value}",\n`);
@@ -124,7 +154,8 @@ export async function updateTypes(db: Knex, options: Options): Promise<void> {
     columns.forEach((x, i) => {
       if (!(columns[i - 1] && columns[i - 1].table === x.table)) {
         const tableName = overrides[x.table] ?? upperFirst(camelCase(x.table));
-        const schemaName = x.schema !== 'public' ? upperFirst(camelCase(x.schema)) : '';
+        const schemaName =
+          x.schema !== "public" ? upperFirst(camelCase(x.schema)) : "";
         output.write(`export type ${schemaName}${tableName} = {\n`);
       }
 

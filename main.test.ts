@@ -61,12 +61,17 @@ beforeAll(async function setup() {
     table.increments("secret").notNullable().primary();
   });
 
-    await db.schema.withSchema('log')
-        .createTable("messages", (table) => {
-        table.increments("int").notNullable().primary();
-        table.text("notes");
-        table.timestamp("timestamp").notNullable();
-    });
+  await db.schema.withSchema("log").createTable("messages", (table) => {
+    table.increments("int").notNullable().primary();
+    table.text("notes");
+    table.timestamp("timestamp").notNullable();
+  });
+
+  await db.schema.withSchema("secret").createTable("secret", (table) => {
+    table.increments("int").notNullable().primary();
+    table.text("notes");
+    table.timestamp("timestamp").notNullable();
+  });
 });
 
 afterAll(async function teardown() {
@@ -80,9 +85,15 @@ test("updateTypes", async function () {
   };
 
   const prefix = 'import { PostgresInterval} from "postgres-interval";';
-  const includedSchemas = ['public', 'log']
-  const skipTables = ['login']
-  await updateTypes(db, { output, overrides, prefix, includedSchemas, skipTables });
+  const includedSchemas = ["public", "log", "!secret"];
+  const skipTables = ["login"];
+  await updateTypes(db, {
+    output,
+    overrides,
+    prefix,
+    schemas: includedSchemas,
+    skip: skipTables,
+  });
 
   expect(await toString(output)).toMatchInlineSnapshot(`
     "// The TypeScript definitions below are automatically generated.
@@ -172,8 +183,10 @@ async function createDatabase(): Promise<void> {
 
   await db.schema.raw("DROP SCHEMA IF EXISTS public CASCADE");
   await db.schema.raw("DROP SCHEMA IF EXISTS log CASCADE");
+  await db.schema.raw("DROP SCHEMA IF EXISTS secret CASCADE");
   await db.schema.raw("CREATE SCHEMA public");
   await db.schema.raw("CREATE SCHEMA log");
+  await db.schema.raw("CREATE SCHEMA secret");
   await db.raw(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
   await db.raw(`CREATE EXTENSION IF NOT EXISTS "hstore"`);
   await db.raw(`CREATE EXTENSION IF NOT EXISTS "citext"`);
