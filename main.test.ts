@@ -163,6 +163,92 @@ test("updateTypes", async function () {
   `);
 });
 
+test("updateTypes with camelCaseColumnNames", async function () {
+  const output = new PassThrough();
+  const overrides = {
+    "identity_provider.linkedin": "LinkedIn",
+  };
+
+  await updateTypes(db, {
+    output,
+    overrides,
+    prefix: 'import { PostgresInterval} from "postgres-interval";',
+    schema: ["public", "log", "!secret"],
+    exclude: ["login"],
+    camelCaseColumnNames: true,
+  });
+
+  expect(await toString(output)).toMatchInlineSnapshot(`
+    "// The TypeScript definitions below are automatically generated.
+    // Do not touch them, or risk, your modifications being lost.
+
+    import { PostgresInterval} from \\"postgres-interval\\";
+
+    export enum IdentityProvider {
+      Google = \\"google\\",
+      Facebook = \\"facebook\\",
+      LinkedIn = \\"linkedin\\",
+    }
+
+    export enum Table {
+      LogMessages = \\"log.messages\\",
+      User = \\"user\\",
+    }
+
+    export type LogMessages = {
+      int: number;
+      notes: string | null;
+      timestamp: Date;
+    };
+
+    export type User = {
+      int: number;
+      provider: IdentityProvider;
+      providerNull: IdentityProvider | null;
+      providerArray: IdentityProvider[];
+      intArray: number[];
+      shortId: string;
+      decimal: string;
+      decimalArray: string[];
+      double: number;
+      doubleArray: number[];
+      float: number;
+      floatArray: number[];
+      money: string;
+      bigint: string;
+      binary: Buffer;
+      binaryNull: Buffer | null;
+      binaryArray: Buffer[];
+      uuid: string;
+      uuidNull: string | null;
+      uuidArray: string[];
+      text: string;
+      textNull: string | null;
+      textArray: string[];
+      citext: string;
+      citextNull: string | null;
+      citextArray: string[];
+      char: string;
+      varchar: string;
+      bool: boolean;
+      boolNull: boolean | null;
+      boolArray: boolean[];
+      jsonbObject: Record<string, unknown>;
+      jsonbObjectNull: Record<string, unknown> | null;
+      jsonbArray: unknown[];
+      jsonbArrayNull: unknown[] | null;
+      timestamp: Date;
+      timestampNull: Date | null;
+      time: string;
+      timeNull: string | null;
+      timeArray: string[];
+      interval: PostgresInterval;
+    };
+
+    "
+  `);
+});
+
 async function createDatabase(): Promise<void> {
   try {
     await db.select(db.raw("version()")).first();
