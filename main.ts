@@ -23,6 +23,7 @@ export type Options = {
   overrides?: Record<string, string>;
 
   prefix?: string;
+  suffix?: string;
 
   /**
    * Schemas that should be included/excluded when generating types.
@@ -183,6 +184,12 @@ export async function updateTypes(db: Knex, options: Options): Promise<void> {
         output.write("};\n\n");
       }
     });
+
+    if (options.suffix) {
+      output.write(options.suffix);
+      output.write("\n")
+    }
+
   } finally {
     output.end();
     db.destroy();
