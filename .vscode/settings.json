@@ -8,7 +8,7 @@
   "files.exclude": {
     ".gitignore": true,
     ".npmignore": true,
-    ".pnp.js": true,
+    ".pnp.cjs": true,
     ".prettierignore": true,
     ".yarn": true,
     ".yarnrc.yml": true,

@@ -187,9 +187,8 @@ export async function updateTypes(db: Knex, options: Options): Promise<void> {
 
     if (options.suffix) {
       output.write(options.suffix);
-      output.write("\n")
+      output.write("\n");
     }
-
   } finally {
     output.end();
     db.destroy();
