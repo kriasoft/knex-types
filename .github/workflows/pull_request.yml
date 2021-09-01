@@ -12,6 +12,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ${{ github.workspace }}/.yarn/cache
+            ${{ github.workspace }}/.yarn/unplugged
+          key: ${{ runner.os }}-yarn-${{ hashFiles('yarn.lock') }}
+          restore-keys: ${{ runner.os }}-yarn-
       - run: yarn install
       - run: yarn prettier --check .
       - run: yarn lint --no-cache

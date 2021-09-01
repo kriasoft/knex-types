@@ -105,6 +105,11 @@ async function updateTypes(db, options) {
         output.write("};\n\n");
       }
     });
+
+    if (options.suffix) {
+      output.write(options.suffix);
+      output.write("\n");
+    }
   } finally {
     output.end();
     db.destroy();

@@ -1,3 +1,4 @@
 /.yarn
-.pnp.js
-tsconfig.json
+/.pnp.cjs
+/main.js
+/tsconfig.json

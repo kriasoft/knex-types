@@ -88,7 +88,7 @@ test("updateTypes", async function () {
     output,
     overrides,
     prefix: 'import { PostgresInterval} from "postgres-interval";',
-    suffix: '// user supplied suffix',
+    suffix: "// user supplied suffix",
     schema: ["public", "log", "!secret"],
     exclude: ["login"],
   });
@@ -169,7 +169,8 @@ async function createDatabase(): Promise<void> {
   try {
     await db.select(db.raw("version()")).first();
   } catch (err) {
-    if (err.code !== "3D000") throw err;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (err instanceof Error && (err as any).code !== "3D000") throw err;
     // Create a new test database if it doesn't exist
     const tmp = knex({ client: "pg", connection: { database: "template1" } });
     try {
