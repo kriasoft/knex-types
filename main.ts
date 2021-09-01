@@ -51,6 +51,14 @@ export type Options = {
    *   exclude: ["migration", "migration_lock"]
    */
   exclude?: string[] | string;
+
+  /**
+   * Whether to convert column names to camel case.
+   *
+   * @example
+   *   camelCaseColumnNames: true
+   */
+  camelCaseColumnNames?: boolean;
 };
 
 /**
@@ -178,7 +186,11 @@ export async function updateTypes(db: Knex, options: Options): Promise<void> {
         type += " | null";
       }
 
-      output.write(`  ${x.column}: ${type};\n`);
+      const columnName = options.camelCaseColumnNames
+        ? camelCase(x.column)
+        : x.column;
+
+      output.write(`  ${columnName}: ${type};\n`);
 
       if (!(columns[i + 1] && columns[i + 1].table === x.table)) {
         output.write("};\n\n");
