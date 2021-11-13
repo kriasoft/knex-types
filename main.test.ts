@@ -2,10 +2,11 @@
 /* SPDX-License-Identifier: MIT */
 
 import { knex } from "knex";
+import { upperFirst } from "lodash";
 import { PassThrough } from "stream";
-import { updateTypes } from "./main";
+import { Column, updateTypes } from "./main";
 
-const db = knex({ client: "pg", connection: { database: "update_types" } });
+let db = knex({ client: "pg", connection: { database: "update_types" } });
 
 beforeAll(async function setup() {
   await createDatabase();
@@ -76,6 +77,8 @@ beforeAll(async function setup() {
     table.timestamp("timestamp").notNullable();
   });
 });
+
+beforeEach(refreshConnection);
 
 afterAll(async function teardown() {
   await db.destroy();
@@ -176,6 +179,316 @@ test("updateTypes", async function () {
   `);
 });
 
+describe("type overrides", function () {
+  describe("specific table column type", function () {
+    test("should only override specific column from specific table", async function () {
+      const output = new PassThrough();
+
+      const type = "OnlyForThisColumnInThisTable";
+      await updateTypes(db, {
+        output,
+        typeOverrides: {
+          "messages.notes": type,
+        },
+        schema: ["log", "secret"],
+      });
+      const result = await toString(output);
+
+      expect(toArray(result)).toEqual(
+        expect.arrayContaining([`notes: ${type} | null;`])
+      );
+
+      // Only 1 column should be modified
+      const occurrences = toArray(result).filter((line) => line.includes(type));
+      expect(occurrences.length).toEqual(1);
+    });
+
+    test("should be able to provide a function", async function () {
+      const output = new PassThrough();
+
+      const type = "MessagesNotesFunctionType";
+      await updateTypes(db, {
+        output,
+        typeOverrides: {
+          "messages.notes": (x: Column) =>
+            `${upperFirst(x.table)}${upperFirst(x.column)}FunctionType`,
+        },
+        schema: ["log", "secret"],
+      });
+      const result = await toString(output);
+
+      expect(toArray(result)).toEqual(
+        expect.arrayContaining([`notes: ${type} | null;`])
+      );
+
+      // Only 1 column should be modified
+      const occurrences = toArray(result).filter((line) => line.includes(type));
+      expect(occurrences.length).toEqual(1);
+    });
+
+    test("should not override column if table does not match", async function () {
+      const output = new PassThrough();
+
+      const type = "OnlyForThisColumnInThisTable";
+      await updateTypes(db, {
+        output,
+        typeOverrides: {
+          "messages.notes": "OnlyForThisColumnInThisTable",
+        },
+        schema: ["secret"],
+      });
+      const result = await toString(output);
+
+      expect(toArray(result)).not.toEqual(
+        expect.arrayContaining([`notes: ${type} | null;`])
+      );
+
+      // No columns should be modified
+      const occurrences = toArray(result).filter((line) => line.includes(type));
+      expect(occurrences.length).toEqual(0);
+    });
+
+    test("should not override specific column from specific table if disabled", async function () {
+      const output = new PassThrough();
+
+      const type = "OnlyForThisColumnInThisTable";
+      await updateTypes(db, {
+        output,
+        typeOverrides: {
+          "messages.notes": "OnlyForThisColumnInThisTable",
+        },
+        schema: ["log", "secret"],
+        overrideTableColumnTypes: false,
+      });
+
+      // No columns should be modified
+      const occurrences = toArray(await toString(output)).filter((line) =>
+        line.includes(type)
+      );
+      expect(occurrences.length).toEqual(0);
+    });
+  });
+
+  describe("all columns with the same name types", function () {
+    test("should override all columns with same name", async function () {
+      const output = new PassThrough();
+      const type = "SomeTypeForAllNotesColumns";
+
+      await updateTypes(db, {
+        output,
+        typeOverrides: {
+          notes: type,
+        },
+        schema: ["secret", "log"],
+      });
+
+      // Should modify 2 columns in total
+      const occurrences = toArray(await toString(output)).filter((line) =>
+        line.includes(type)
+      );
+      expect(occurrences.length).toEqual(2);
+    });
+
+    test("should be able to provide a function", async function () {
+      const output = new PassThrough();
+
+      await updateTypes(db, {
+        output,
+        typeOverrides: {
+          notes: (x: Column) =>
+            `${upperFirst(x.table)}${upperFirst(x.column)}FunctionType`,
+        },
+        schema: ["secret", "log"],
+      });
+
+      // Should modify 2 columns in total
+      const occurrences = toArray(await toString(output)).filter(
+        (line) =>
+          line.includes("SecretNotesFunctionType") ||
+          line.includes("MessagesNotesFunctionType")
+      );
+      expect(occurrences.length).toEqual(2);
+    });
+
+    test("should not override all columns with same name if disabled", async function () {
+      const output = new PassThrough();
+      const type = "SomeTypeForAllNotesColumns";
+
+      await updateTypes(db, {
+        output,
+        typeOverrides: {
+          notes: type,
+        },
+        schema: ["secret", "log"],
+        overrideColumnTypes: false,
+      });
+
+      // No columns should be modified
+      const occurrences = toArray(await toString(output)).filter((line) =>
+        line.includes(type)
+      );
+      expect(occurrences.length).toEqual(0);
+    });
+  });
+
+  describe("database default types", function () {
+    test("should override types", async function () {
+      const output = new PassThrough();
+      const prefix = `type Numeric = \`\${number}\` | Number;`;
+
+      await updateTypes(db, {
+        output,
+        prefix,
+        typeOverrides: { numeric: "Numeric" },
+      });
+      const result = await toString(output);
+
+      expect(toArray(result)).toEqual(
+        expect.arrayContaining([
+          "type Numeric = `${number}` | Number;",
+          "decimal: Numeric;",
+          "decimal_array: Numeric[];",
+        ])
+      );
+
+      // Only 2 columns should be modified
+      const occurrences = toArray(result).filter((line) =>
+        line.includes(": Numeric")
+      );
+      expect(occurrences.length).toEqual(2);
+    });
+
+    test("should be able to provide a function", async function () {
+      const output = new PassThrough();
+      const prefix = `type Numeric = \`\${number}\` | Number;`;
+
+      await updateTypes(db, {
+        output,
+        prefix,
+        typeOverrides: {
+          numeric: (x: Column) =>
+            `${upperFirst(x.table)}${upperFirst(x.column)}FunctionType`,
+        },
+      });
+      const result = await toString(output);
+
+      expect(toArray(result)).toEqual(
+        expect.arrayContaining([
+          "type Numeric = `${number}` | Number;",
+          "decimal: UserDecimalFunctionType;",
+          "decimal_array: UserDecimal_arrayFunctionType[];",
+        ])
+      );
+
+      // Only 2 columns should be modified
+      const occurrences = toArray(result).filter((line) =>
+        line.includes("FunctionType")
+      );
+      expect(occurrences.length).toEqual(2);
+    });
+
+    test("should not override types if disabled", async function () {
+      const output = new PassThrough();
+      const prefix = `type Numeric = \`\${number}\` | Number;`;
+
+      await updateTypes(db, {
+        output,
+        prefix,
+        typeOverrides: { numeric: "Numeric" },
+        overrideDefaultTypes: false,
+      });
+
+      // No columns should be modified
+      const occurrences = toArray(await toString(output)).filter((line) =>
+        line.includes(": Numeric")
+      );
+      expect(occurrences.length).toEqual(0);
+    });
+  });
+
+  describe('"*" type post processor', function () {
+    test("should overwrite all types for all columns", async function () {
+      const output = new PassThrough();
+
+      await updateTypes(db, {
+        output,
+        typeOverrides: {
+          "*": "overwritten",
+        },
+        schema: ["log"],
+      });
+
+      // All columns should be modified
+      const occurrences = toArray(await toString(output)).filter((line) =>
+        line.includes(": overwritten;")
+      );
+      expect(occurrences.length).toEqual(3);
+    });
+
+    test("should be able to provide a function", async function () {
+      const output = new PassThrough();
+
+      await updateTypes(db, {
+        output,
+        typeOverrides: {
+          "*": (x: Column, defaultType: string) => defaultType + " | appended",
+        },
+        schema: ["log"],
+      });
+      const result = await toString(output);
+
+      expect(toArray(result)).toEqual(
+        expect.arrayContaining([
+          "int: number | appended;",
+          "notes: string | null | appended;",
+          "timestamp: Date | appended;",
+        ])
+      );
+    });
+  });
+
+  describe("priorities", function () {
+    test("specific table type should overwrite all other overrides", async function () {
+      const output = new PassThrough();
+
+      await updateTypes(db, {
+        output,
+        typeOverrides: {
+          text: "DefaultDatabaseType",
+          notes: "AllColumnsType",
+          "messages.notes": "TableSpecificType",
+        },
+        schema: ["log"],
+      });
+
+      const result = await toString(output);
+
+      expect(toArray(result)).toEqual(
+        expect.arrayContaining([`notes: TableSpecificType | null;`])
+      );
+    });
+
+    test("columns types should overwrite database's default types", async function () {
+      const output = new PassThrough();
+
+      await updateTypes(db, {
+        output,
+        typeOverrides: {
+          text: "DefaultDatabaseType",
+          notes: "AllColumnsType",
+        },
+        schema: ["log"],
+      });
+
+      const result = await toString(output);
+
+      expect(toArray(result)).toEqual(
+        expect.arrayContaining([`notes: AllColumnsType | null;`])
+      );
+    });
+  });
+});
+
 async function createDatabase(): Promise<void> {
   try {
     await db.select(db.raw("version()")).first();
@@ -210,4 +523,13 @@ function toString(stream: PassThrough): Promise<string> {
     stream.on("error", (err) => reject(err));
     stream.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
   });
+}
+
+function toArray(output: string): string[] {
+  return output.split("\n").map((line) => line.trim());
+}
+
+async function refreshConnection() {
+  db.destroy();
+  db = knex({ client: "pg", connection: { database: "update_types" } });
 }
