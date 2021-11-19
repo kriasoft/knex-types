@@ -178,7 +178,7 @@ export async function updateTypes(db: Knex, options: Options): Promise<void> {
         type += " | null";
       }
 
-      output.write(`  ${x.column}: ${type};\n`);
+      output.write(`  ${quoteColumnName(x.column)}: ${type};\n`);
 
       if (!(columns[i + 1] && columns[i + 1].table === x.table)) {
         output.write("};\n\n");
@@ -267,4 +267,12 @@ export function getType(
     default:
       return customTypes.get(udt) ?? "unknown";
   }
+}
+
+function quoteColumnName(name: string): string {
+  // regex is a simplified check for valid IdentifierNames
+  const isValidIdentifier = /^[a-zA-Z$_][a-zA-Z$_0-9]*$/.test(name);
+
+  // also escape any quotes that might be in the name.
+  return isValidIdentifier ? name : JSON.stringify(name);
 }
