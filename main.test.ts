@@ -109,7 +109,12 @@ test("updateTypes", async function () {
       LogMessages = \\"log.messages\\",
       User = \\"user\\",
     }
-    
+
+    export type Tables = {
+      \\"log.messages\\": LogMessages,
+      \\"user\\": User,
+    };
+
     export type LogMessages = {
       int: number;
       notes: string | null;
