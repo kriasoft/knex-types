@@ -178,7 +178,7 @@ export async function updateTypes(db: Knex, options: Options): Promise<void> {
         type += " | null";
       }
 
-      output.write(`  ${quoteColumnName(x.column)}: ${type};\n`);
+      output.write(`  ${sanitize(x.column)}: ${type};\n`);
 
       if (!(columns[i + 1] && columns[i + 1].table === x.table)) {
         output.write("};\n\n");
@@ -269,10 +269,12 @@ export function getType(
   }
 }
 
-function quoteColumnName(name: string): string {
-  // regex is a simplified check for valid IdentifierNames
-  const isValidIdentifier = /^[a-zA-Z$_][a-zA-Z$_0-9]*$/.test(name);
-
-  // also escape any quotes that might be in the name.
-  return isValidIdentifier ? name : JSON.stringify(name);
+/**
+ * Wraps the target property identifier into quotes in case it contains any
+ * invalid characters.
+ *
+ * @see https://developer.mozilla.org/docs/Glossary/Identifier
+ */
+function sanitize(name: string): string {
+  return /^[a-zA-Z$_][a-zA-Z$_0-9]*$/.test(name) ? name : JSON.stringify(name);
 }

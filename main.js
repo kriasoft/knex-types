@@ -99,7 +99,7 @@ async function updateTypes(db, options) {
         type += " | null";
       }
 
-      output.write(`  ${x.column}: ${type};\n`);
+      output.write(`  ${sanitize(x.column)}: ${type};\n`);
 
       if (!(columns[i + 1] && columns[i + 1].table === x.table)) {
         output.write("};\n\n");
@@ -180,4 +180,15 @@ function getType(udt, customTypes, defaultValue) {
     default:
       return (_customTypes$get = customTypes.get(udt)) !== null && _customTypes$get !== void 0 ? _customTypes$get : "unknown";
   }
+}
+/**
+ * Wraps the target property identifier into quotes in case it contains any
+ * invalid characters.
+ *
+ * @see https://developer.mozilla.org/docs/Glossary/Identifier
+ */
+
+
+function sanitize(name) {
+  return /^[a-zA-Z$_][a-zA-Z$_0-9]*$/.test(name) ? name : JSON.stringify(name);
 }
