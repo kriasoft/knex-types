@@ -2,12 +2,15 @@
 /* SPDX-License-Identifier: MIT */
 
 import { knex } from "knex";
+import { camelCase, snakeCase, upperFirst } from "lodash";
 import { PassThrough } from "stream";
 import { updateTypes } from "./main";
 
-const db = knex({ client: "pg", connection: { database: "update_types" } });
+let db: ReturnType<typeof knex>;
 
-beforeAll(async function setup() {
+beforeEach(async function setup() {
+  db = knex({ client: "pg", connection: { database: "update_types" } });
+
   await createDatabase();
 
   await db.raw(`CREATE DOMAIN short_id AS TEXT CHECK(VALUE ~ '^[0-9a-z]{6}$')`);
@@ -74,7 +77,7 @@ beforeAll(async function setup() {
   });
 });
 
-afterAll(async function teardown() {
+afterEach(async function teardown() {
   await db.destroy();
 });
 
@@ -163,6 +166,86 @@ test("updateTypes", async function () {
     // user supplied suffix
     "
   `);
+});
+
+test("updateTypes with formatters", async function () {
+  const output = new PassThrough();
+
+  await updateTypes(db, {
+    output,
+    formatters: {
+      column: (name) => upperFirst(camelCase(name)),
+      enum: (name) => name, // disable default
+      enumEl: (name) => snakeCase(name).toUpperCase(),
+      table: (name) => `prefix${upperFirst(name)}`,
+    },
+  });
+
+  expect(await toString(output)).toMatchInlineSnapshot(`
+"// The TypeScript definitions below are automatically generated.
+// Do not touch them, or risk, your modifications being lost.
+
+export enum identity_provider {
+  GOOGLE = \\"google\\",
+  FACEBOOK = \\"facebook\\",
+  LINKEDIN = \\"linkedin\\",
+}
+
+export enum Table {
+  prefixLogin = \\"login\\",
+  prefixUser = \\"user\\",
+}
+
+export type prefixLogin = {
+  Secret: number;
+};
+
+export type prefixUser = {
+  Int: number;
+  Provider: identity_provider;
+  ProviderNull: identity_provider | null;
+  ProviderArray: identity_provider[];
+  IntArray: number[];
+  ShortId: string;
+  Decimal: string;
+  DecimalArray: string[];
+  Double: number;
+  DoubleArray: number[];
+  Float: number;
+  FloatArray: number[];
+  Money: string;
+  Bigint: string;
+  Binary: Buffer;
+  BinaryNull: Buffer | null;
+  BinaryArray: Buffer[];
+  Uuid: string;
+  UuidNull: string | null;
+  UuidArray: string[];
+  Text: string;
+  TextNull: string | null;
+  TextArray: string[];
+  Citext: string;
+  CitextNull: string | null;
+  CitextArray: string[];
+  Char: string;
+  Varchar: string;
+  Bool: boolean;
+  BoolNull: boolean | null;
+  BoolArray: boolean[];
+  JsonbObject: Record<string, unknown>;
+  JsonbObjectNull: Record<string, unknown> | null;
+  JsonbArray: unknown[];
+  JsonbArrayNull: unknown[] | null;
+  Timestamp: Date;
+  TimestampNull: Date | null;
+  Time: string;
+  TimeNull: string | null;
+  TimeArray: string[];
+  Interval: PostgresInterval;
+};
+
+"
+`);
 });
 
 async function createDatabase(): Promise<void> {

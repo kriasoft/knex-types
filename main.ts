@@ -51,12 +51,39 @@ export type Options = {
    *   exclude: ["migration", "migration_lock"]
    */
   exclude?: string[] | string;
+
+  /**
+   * Custom formatters for specific type of data - enum, enumEl, table and column.
+   *
+   * If any type is null/not specified default formatter for this type will be used.
+   *
+   * @example
+   *   formatters: {
+   *      column: (name) => kebabCase(name),
+   *      table: (name) => upperFirst(name),
+   *   }
+   */
+  formatters?: {
+    column?: (name: string) => string;
+    enum?: (name: string) => string;
+    enumEl?: (name: string) => string;
+    table?: (name: string) => string;
+  };
 };
 
 /**
  * Generates TypeScript definitions (types) from a PostgreSQL database schema.
  */
 export async function updateTypes(db: Knex, options: Options): Promise<void> {
+  // const formatter: Record<string, (name: string) => string> = {
+  const formatter: Required<Options["formatters"]> = {
+    column: options.formatters?.column ?? ((name) => name),
+    enum: options.formatters?.enum ?? ((name) => upperFirst(camelCase(name))),
+    enumEl:
+      options.formatters?.enumEl ??
+      ((name) => upperFirst(camelCase(name.replace(/[.-]/g, "_")))),
+    table: options.formatters?.table ?? ((name) => upperFirst(camelCase(name))),
+  };
   const overrides: Record<string, string> = options.overrides ?? {};
   const output: Writable =
     typeof options.output === "string"
@@ -103,14 +130,12 @@ export async function updateTypes(db: Knex, options: Options): Promise<void> {
     enums.forEach((x, i) => {
       // The first line of enum declaration
       if (!(enums[i - 1] && enums[i - 1].key === x.key)) {
-        const enumName = overrides[x.key] ?? upperFirst(camelCase(x.key));
+        const enumName = overrides[x.key] ?? formatter.enum(x.key);
         output.write(`export enum ${enumName} {\n`);
       }
 
       // Enum body
-      const key =
-        overrides[`${x.key}.${x.value}`] ??
-        upperFirst(camelCase(x.value.replace(/[.-]/g, "_")));
+      const key = overrides[`${x.key}.${x.value}`] ?? formatter.enumEl(x.value);
       output.write(`  ${key} = "${x.value}",\n`);
 
       // The closing line
@@ -120,10 +145,7 @@ export async function updateTypes(db: Knex, options: Options): Promise<void> {
     });
 
     const enumsMap = new Map(
-      enums.map((x) => [
-        x.key,
-        overrides[x.key] ?? upperFirst(camelCase(x.key)),
-      ])
+      enums.map((x) => [x.key, overrides[x.key] ?? formatter.enum(x.key)])
     );
 
     // Fetch the list of tables/columns
@@ -155,7 +177,7 @@ export async function updateTypes(db: Knex, options: Options): Promise<void> {
       })
     );
     Array.from(tableSet).forEach((value) => {
-      const key = overrides[value] ?? upperFirst(camelCase(value));
+      const key = overrides[value] ?? formatter.table(value);
       output.write(`  ${key} = "${value}",\n`);
     });
     output.write("}\n\n");
@@ -163,9 +185,9 @@ export async function updateTypes(db: Knex, options: Options): Promise<void> {
     // Construct TypeScript db record types
     columns.forEach((x, i) => {
       if (!(columns[i - 1] && columns[i - 1].table === x.table)) {
-        const tableName = overrides[x.table] ?? upperFirst(camelCase(x.table));
+        const tableName = overrides[x.table] ?? formatter.table(x.table);
         const schemaName =
-          x.schema !== "public" ? upperFirst(camelCase(x.schema)) : "";
+          x.schema !== "public" ? formatter.table(x.schema) : "";
         output.write(`export type ${schemaName}${tableName} = {\n`);
       }
 
@@ -178,7 +200,7 @@ export async function updateTypes(db: Knex, options: Options): Promise<void> {
         type += " | null";
       }
 
-      output.write(`  ${x.column}: ${type};\n`);
+      output.write(`  ${formatter.column(x.column)}: ${type};\n`);
 
       if (!(columns[i + 1] && columns[i + 1].table === x.table)) {
         output.write("};\n\n");
