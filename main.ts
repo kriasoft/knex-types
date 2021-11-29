@@ -159,6 +159,13 @@ export async function updateTypes(db: Knex, options: Options): Promise<void> {
       output.write(`  ${key} = "${value}",\n`);
     });
     output.write("}\n\n");
+    // The list of tables as type
+    output.write("export type Tables = {\n");
+    Array.from(tableSet).forEach((key) => {
+      const value = overrides[key] ?? upperFirst(camelCase(key));
+      output.write(`  "${key}": ${value},\n`);
+    });
+    output.write("};\n\n");
 
     // Construct TypeScript db record types
     columns.forEach((x, i) => {
