@@ -185,7 +185,9 @@ export async function updateTypes(db: Knex, options: Options): Promise<void> {
         type += " | null";
       }
 
-      output.write(`  ${sanitize(x.column)}: ${type};\n`);
+      const optional = x.nullable ? "?" : "";
+
+      output.write(`  ${sanitize(x.column)}${optional}: ${type};\n`);
 
       if (!(columns[i + 1] && columns[i + 1].table === x.table)) {
         output.write("};\n\n");
