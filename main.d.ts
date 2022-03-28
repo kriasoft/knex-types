@@ -42,6 +42,14 @@ export declare type Options = {
    *   exclude: ["migration", "migration_lock"]
    */
   exclude?: string[] | string;
+  /**
+   * If you defined, f.x. the [`postProcessResponse`](@link http://knexjs.org/#Installation-post-process-response) on your knex config,
+   * you might also want to format the generated interfaces to fit the same logic.
+   *
+   * @example
+   *  formatColumnName(value: string) => camelCase(value),
+   */
+  formatColumnName?: (value: string) => string;
 };
 /**
  * Generates TypeScript definitions (types) from a PostgreSQL database schema.
