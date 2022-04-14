@@ -7,6 +7,7 @@ exports.updateTypes = updateTypes;
 exports.getType = getType;
 exports.overrideType = overrideType;
 exports.typePostProcessor = typePostProcessor;
+exports.overrideName = overrideName;
 
 var _camelCase2 = _interopRequireDefault(require("lodash/camelCase"));
 
@@ -62,50 +63,82 @@ async function updateTypes(db, options) {
       output.write(`  ${key} = "${x.value}",\n`); // The closing line
 
       if (!(enums[i + 1] && enums[i + 1].key === x.key)) {
-        output.write('}\n\n');
+        output.write('};\n\n');
       }
     });
     const enumsMap = new Map(enums.map(x => {
-      var _overrides$x$key2;
+      var _ref3;
 
-      return [x.key, (_overrides$x$key2 = overrides[x.key]) !== null && _overrides$x$key2 !== void 0 ? _overrides$x$key2 : (0, _upperFirst2.default)((0, _camelCase2.default)(x.key))];
+      return [x.key, (_ref3 = overrides[x.key]) !== null && _ref3 !== void 0 ? _ref3 : (0, _upperFirst2.default)((0, _camelCase2.default)(x.key))];
     })); // Fetch the list of tables/columns
 
     const columns = await db.withSchema('information_schema').table('columns').whereIn('table_schema', includeSchemas).whereNotIn('table_schema', excludeSchemas).whereNotIn('table_name', exclude).orderBy('table_schema').orderBy('table_name').orderBy('ordinal_position').select('table_schema as schema', 'table_name as table', 'column_name as column', db.raw("(is_nullable = 'YES') as nullable"), 'column_default as default', 'data_type as type', 'udt_name as udt'); // The list of database tables as enum
 
-    output.write('export enum Table {\n');
-    const tableSet = new Set(columns.map(x => {
-      const schema = x.schema !== 'public' ? `${x.schema}.` : '';
-      return `${schema}${x.table}`;
-    }));
-    Array.from(tableSet).forEach(value => {
-      var _overrides$value;
+    output.write(`export enum ${options.tablesEnumName || 'Table'} {\n`); // Unique schema / table combination array
 
-      const key = (_overrides$value = overrides[value]) !== null && _overrides$value !== void 0 ? _overrides$value : (0, _upperFirst2.default)((0, _camelCase2.default)(value));
+    const tables = [...new Set(columns.map(x => JSON.stringify({
+      table: x.table,
+      schema: x.schema
+    })))].map(t => JSON.parse(t)); // Write enum tables
+
+    for (const table of tables) {
+      var _overrideName, _overrideName2;
+
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      const x = columns.find(x => x.table === table.table && x.schema === table.schema);
+      const tableName = (_overrideName = overrideName(x, 'table', overrides)) !== null && _overrideName !== void 0 ? _overrideName : (0, _upperFirst2.default)((0, _camelCase2.default)(x.table));
+      let schemaName = x.schema !== 'public' ? (0, _upperFirst2.default)((0, _camelCase2.default)(x.schema)) : '';
+      schemaName = (_overrideName2 = overrideName(x, 'schema', overrides)) !== null && _overrideName2 !== void 0 ? _overrideName2 : schemaName;
+      const key = `${schemaName}${tableName}`;
+      const schema = x.schema !== 'public' ? `${x.schema}.` : '';
+      const value = `${schema}${x.table}`;
       output.write(`  ${key} = "${value}",\n`);
-    });
-    output.write('}\n\n'); // Construct TypeScript db record types
+    }
+
+    output.write('};\n\n'); // Write the list of tables as a type
+
+    output.write(`export type ${options.tablesTypeName || 'Tables'} = {\n`);
+
+    for (const table of tables) {
+      var _overrideName3, _overrideName4;
+
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      const x = columns.find(x => x.table === table.table && x.schema === table.schema);
+      const tableName = (_overrideName3 = overrideName(x, 'table', overrides)) !== null && _overrideName3 !== void 0 ? _overrideName3 : (0, _upperFirst2.default)((0, _camelCase2.default)(x.table));
+      let schemaName = x.schema !== 'public' ? (0, _upperFirst2.default)((0, _camelCase2.default)(x.schema)) : '';
+      schemaName = (_overrideName4 = overrideName(x, 'schema', overrides)) !== null && _overrideName4 !== void 0 ? _overrideName4 : schemaName;
+      const key = `${schemaName}${tableName}`;
+      const schema = x.schema !== 'public' ? `${x.schema}.` : '';
+      const value = `${schema}${x.table}`;
+      output.write(`  "${value}": ${key},\n`);
+    }
+
+    output.write('};\n\n'); // Construct TypeScript db record types
 
     columns.forEach((x, i) => {
-      var _overrideType;
+      var _overrideName7, _overrideType;
 
-      const isTableFirstColumn = !(columns[i - 1] && columns[i - 1].table === x.table); // Export table type
+      const isTableFirstColumn = !(columns[i - 1] && columns[i - 1].table === x.table); // Export schema & table type
 
       if (isTableFirstColumn) {
-        var _overrides$x$table;
+        var _overrideName5, _overrideName6;
 
-        const tableName = (_overrides$x$table = overrides[x.table]) !== null && _overrides$x$table !== void 0 ? _overrides$x$table : (0, _upperFirst2.default)((0, _camelCase2.default)(x.table));
-        const schemaName = x.schema !== 'public' ? (0, _upperFirst2.default)((0, _camelCase2.default)(x.schema)) : '';
+        const tableName = (_overrideName5 = overrideName(x, 'table', overrides)) !== null && _overrideName5 !== void 0 ? _overrideName5 : (0, _upperFirst2.default)((0, _camelCase2.default)(x.table)); // Doing it this way because I need to separate the trinary expression from the ?? operator (doesn't work).
+
+        let schemaName = x.schema !== 'public' ? (0, _upperFirst2.default)((0, _camelCase2.default)(x.schema)) : '';
+        schemaName = (_overrideName6 = overrideName(x, 'schema', overrides)) !== null && _overrideName6 !== void 0 ? _overrideName6 : schemaName;
         output.write(`export type ${schemaName}${tableName} = {\n`);
       } // Set column type
 
 
+      const columnName = (_overrideName7 = overrideName(x, 'column', overrides)) !== null && _overrideName7 !== void 0 ? _overrideName7 : x.column;
       const isArrayType = x.type === 'ARRAY';
       let type = (_overrideType = overrideType(x, options)) !== null && _overrideType !== void 0 ? _overrideType : getType(x, enumsMap);
       if (isArrayType) type += '[]';
       if (x.nullable) type += ' | null'; // Process the "*" type override if provided
 
-      output.write(`  ${sanitize(x.column)}: ${type};\n`);
+      type = typePostProcessor(x, type, options);
+      output.write(`  ${sanitize(columnName)}: ${type};\n`);
 
       if (!(columns[i + 1] && columns[i + 1].table === x.table)) {
         output.write('};\n\n');
@@ -190,42 +223,6 @@ function getType(x, customTypes) {
   }
 }
 /**
- * If enabled override a column belonging to a specific table (highest priority),
- * all columns with the same name or overwrite the database's default type (lowest priority).
- * A function can be provided for each override.
- */
-
-
-function overrideType(x, options) {
-  var _ref3, _options$overrideTabl, _options$overrideColu, _options$overrideDefa;
-
-  const typeOverrides = (_ref3 = options.typeOverrides) !== null && _ref3 !== void 0 ? _ref3 : {}; // Override a table's specific column type
-
-  const overrideTableColumnTypes = (_options$overrideTabl = options.overrideTableColumnTypes) !== null && _options$overrideTabl !== void 0 ? _options$overrideTabl : true;
-
-  if (overrideTableColumnTypes && `${x.table}.${x.column}` in typeOverrides) {
-    const tableColumnType = typeOverrides[`${x.table}.${x.column}`];
-    return typeof tableColumnType === 'function' ? tableColumnType(x) : tableColumnType;
-  } // Override all matching columns type
-
-
-  const overrideColumnTypes = (_options$overrideColu = options.overrideColumnTypes) !== null && _options$overrideColu !== void 0 ? _options$overrideColu : true;
-
-  if (overrideColumnTypes && x.column in typeOverrides) {
-    const columnType = typeOverrides[x.column];
-    return typeof columnType === 'function' ? columnType(x) : columnType;
-  } // Override the database's default type if provided.
-
-
-  const overrideDefaultTypes = (_options$overrideDefa = options.overrideDefaultTypes) !== null && _options$overrideDefa !== void 0 ? _options$overrideDefa : true;
-  const udt = x.type === 'ARRAY' ? x.udt.substring(1) : x.udt;
-
-  if (overrideDefaultTypes && udt in typeOverrides) {
-    const type = typeOverrides[udt];
-    return typeof type === 'function' ? type(x) : type;
-  }
-}
-/**
  * Wraps the target property identifier into quotes in case it contains any
  * invalid characters.
  *
@@ -235,4 +232,96 @@ function overrideType(x, options) {
 
 function sanitize(name) {
   return /^[a-zA-Z$_][a-zA-Z$_0-9]*$/.test(name) ? name : JSON.stringify(name);
+}
+/**
+ * If enabled override a column belonging to a specific table (highest priority),
+ * all columns with the same name or overwrite the database's default type (lowest priority).
+ * A function can be provided for each override.
+ */
+
+
+function overrideType(x, options) {
+  var _ref4, _options$overrideTabl, _options$overrideColu, _options$overrideDefa;
+
+  const typeOverrides = (_ref4 = options.typeOverrides) !== null && _ref4 !== void 0 ? _ref4 : {}; // Override a table's specific column type
+
+  const overrideTableColumnTypes = (_options$overrideTabl = options.overrideTableColumnTypes) !== null && _options$overrideTabl !== void 0 ? _options$overrideTabl : true;
+
+  if (overrideTableColumnTypes && `${x.table}.${x.column}` in typeOverrides) {
+    const tableColumnType = typeOverrides[`${x.table}.${x.column}`];
+    return isFunction(tableColumnType) ? tableColumnType(x) : tableColumnType;
+  } // Override all matching columns type
+
+
+  const overrideColumnTypes = (_options$overrideColu = options.overrideColumnTypes) !== null && _options$overrideColu !== void 0 ? _options$overrideColu : true;
+
+  if (overrideColumnTypes && x.column in typeOverrides) {
+    const columnType = typeOverrides[x.column];
+    return isFunction(columnType) ? columnType(x) : columnType;
+  } // Override the database's default type if provided.
+
+
+  const overrideDefaultTypes = (_options$overrideDefa = options.overrideDefaultTypes) !== null && _options$overrideDefa !== void 0 ? _options$overrideDefa : true;
+  const udt = x.type === 'ARRAY' ? x.udt.substring(1) : x.udt;
+
+  if (overrideDefaultTypes && udt in typeOverrides) {
+    const type = typeOverrides[udt];
+    return isFunction(type) ? type(x) : type;
+  }
+
+  return null;
+}
+/**
+ * If the "*" override has been provided, if it's a function then call it and return
+ * the value, otherwise just return the value it holds.
+ * If the "*" override was not provided just return again the same type.
+ * Whatever this function returns will override the processed type.
+ */
+
+
+function typePostProcessor(x, type, options) {
+  var _options$typeOverride;
+
+  const typeOverrides = (_options$typeOverride = options.typeOverrides) !== null && _options$typeOverride !== void 0 ? _options$typeOverride : {}; // If the "*" has been provided, return its value.
+
+  if ('*' in typeOverrides) {
+    return isFunction(typeOverrides['*']) ? typeOverrides['*'](x, type) : typeOverrides['*'];
+  } // Return the default type
+
+
+  return type;
+} // eslint-disable-next-line @typescript-eslint/ban-types
+
+
+function isFunction(value) {
+  return typeof value === 'function';
+}
+
+function overrideName(x, category, overrides) {
+  let name = null;
+  const defaultValue = x[category];
+
+  if (category === 'column') {
+    // Run override for specific table column
+    if (`${x.table}.${x.column}` in overrides) {
+      const override = overrides[`${x.table}.${x.column}`];
+      name = isFunction(override) ? override(x, category, defaultValue) : override;
+    } else if (x.column in overrides) {
+      // Run override for all columns with same name
+      const override = overrides[x.column];
+      name = isFunction(override) ? override(x, category, defaultValue) : override;
+    }
+  } else {
+    // Run override for specific name/key
+    if (x[category] in overrides) {
+      const override = overrides[x[category]];
+      name = isFunction(override) ? override(x, category, defaultValue) : override;
+    }
+  }
+
+  if ('*' in overrides) {
+    name = isFunction(overrides['*']) ? overrides['*'](x, category, name) : overrides['*'];
+  }
+
+  return name;
 }

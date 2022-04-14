@@ -1,20 +1,47 @@
 /// <reference types="node" />
-import { Knex } from "knex";
-import type { Writable } from "stream";
+import { Knex } from 'knex';
+import type { Writable } from 'stream';
 export declare type Options = {
   /**
    * Filename or output stream where the type definitions needs to be written.
    */
   output: Writable | string;
   /**
-   * Name overrides for enums, classes, and fields.
+   * The name of the exported enum (Which encapsulates all tables)
+   * Default: "Table"
+   */
+  tablesEnumName?: string;
+  /**
+   * The name of the exported tables type
+   * Default: "Tables"
+   */
+  tablesTypeName?: string;
+  /**
+   * Name overrides for enums, schemas, tables and columns.
+   * Check tests for more info.
    *
    * @example
    *   overrides: {
    *     "identity_provider.linkedin": "LinkedIn"
    *   }
+   *
+   * @example
+   * Override a table name with a function
+   *
+   *   overrides: {
+   *     // Overwrite the 'user' table name
+   *     user: (x, type, defaultValue) => UserTable
+   *   }
+   *
+   * @example
+   * Tag all schemas, tables and columns
+   *
+   *  overrides: {
+   *     // Append "Table" to all tables and TitleCase the name
+   *     "*": (x, type, defaultValue) => type === "table" ? "Table" +  upperFirst(camelCase(x.table)) : defaultValue
+   *   }
    */
-  overrides?: Record<string, string>;
+  overrides?: Record<string, OverrideStringFunction>;
   /**
    * Overrides of column types.
    * Overrides have higher priority the more specific they are, from highest to lowest:
@@ -139,6 +166,10 @@ export declare type Options = {
  * Generates TypeScript definitions (types) from a PostgreSQL database schema.
  */
 export declare function updateTypes(db: Knex, options: Options): Promise<void>;
+export declare type Enum = {
+  key: string;
+  value: string;
+};
 export declare type Column = {
   table: string;
   column: string;
@@ -148,12 +179,21 @@ export declare type Column = {
   type: string;
   udt: string;
 };
-declare type TypeOverride = Record<
+export declare type NameOverrideCategory = keyof Column &
+  ('table' | 'schema' | 'column');
+export declare type OverrideStringFunction =
+  | string
+  | ((
+      x: Column,
+      category: NameOverrideCategory,
+      defaultValue: string | null
+    ) => string | null);
+export declare type TypeOverride = Record<
   string,
-  string | ((x: Column, defaultType?: string) => string)
+  string | ((x: Column) => string)
 >;
-declare type TypePostProcessor = Record<
-  "*",
+export declare type TypePostProcessor = Record<
+  '*',
   string | ((x: Column, defaultType: string) => string)
 >;
 export declare function getType(
@@ -180,4 +220,8 @@ export declare function typePostProcessor(
   type: string,
   options: Options
 ): string;
-export {};
+export declare function overrideName(
+  x: Column,
+  category: NameOverrideCategory,
+  overrides: Record<string, OverrideStringFunction>
+): string | null;
