@@ -51,6 +51,15 @@ export type Options = {
    *   exclude: ["migration", "migration_lock"]
    */
   exclude?: string[] | string;
+
+  /**
+   * If you defined, f.x. the [`postProcessResponse`](@link http://knexjs.org/#Installation-post-process-response) on your knex config,
+   * you might also want to format the generated interfaces to fit the same logic.
+   *
+   * @example
+   *  formatColumnName(value: string) => camelCase(value),
+   */
+  formatColumnName?: (value: string) => string;
 };
 
 /**
@@ -185,7 +194,11 @@ export async function updateTypes(db: Knex, options: Options): Promise<void> {
         type += " | null";
       }
 
-      output.write(`  ${sanitize(x.column)}: ${type};\n`);
+      output.write(
+        `  ${sanitize(
+          options?.formatColumnName?.(x.column) ?? x.column
+        )}: ${type};\n`
+      );
 
       if (!(columns[i + 1] && columns[i + 1].table === x.table)) {
         output.write("};\n\n");
