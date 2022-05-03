@@ -1,8 +1,9 @@
+# GitHub Actions workflow
+# https://help.github.com/actions
+
 name: PR
 
-on:
-  pull_request:
-    branches: [main]
+on: [pull_request]
 
 env:
   CI: true
