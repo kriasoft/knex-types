@@ -3,8 +3,8 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.updateTypes = updateTypes;
 exports.getType = getType;
+exports.updateTypes = updateTypes;
 
 var _camelCase2 = _interopRequireDefault(require("lodash/camelCase"));
 
