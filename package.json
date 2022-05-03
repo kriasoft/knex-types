@@ -38,31 +38,32 @@
     "test": "jest",
     "build": "babel --env-name production -x \".ts\" --out-dir . \"*.ts\" && tsc && rm *.test.d.ts && prettier --write ."
   },
+  "packageManager": "yarn@4.0.0-rc.4",
   "dependencies": {
     "lodash": "^4.17.21",
-    "pg": "^8.7.1"
+    "pg": "^8.7.3"
   },
   "peerDependencies": {
     "knex": ">=0.95"
   },
   "devDependencies": {
-    "@babel/cli": "^7.14.8",
-    "@babel/core": "^7.15.0",
-    "@babel/plugin-proposal-class-properties": "^7.14.5",
-    "@babel/preset-env": "^7.15.0",
-    "@babel/preset-typescript": "^7.15.0",
-    "@types/jest": "^27.0.1",
-    "@types/lodash": "^4.14.172",
-    "@types/node": "^16.7.10",
-    "@typescript-eslint/eslint-plugin": "^4.30.0",
-    "@typescript-eslint/parser": "^4.30.0",
-    "babel-plugin-import": "^1.13.3",
-    "eslint": "^7.32.0",
-    "eslint-config-prettier": "^8.3.0",
-    "jest": "^27.1.0",
-    "knex": "^0.95.10",
-    "prettier": "^2.3.2",
-    "typescript": "^4.4.2"
+    "@babel/cli": "^7.17.10",
+    "@babel/core": "^7.17.10",
+    "@babel/plugin-proposal-class-properties": "^7.16.7",
+    "@babel/preset-env": "^7.17.10",
+    "@babel/preset-typescript": "^7.16.7",
+    "@types/jest": "^27.5.0",
+    "@types/lodash": "^4.14.182",
+    "@types/node": "^16.11.33",
+    "@typescript-eslint/eslint-plugin": "^5.22.0",
+    "@typescript-eslint/parser": "^5.22.0",
+    "babel-plugin-import": "^1.13.5",
+    "eslint": "^8.14.0",
+    "eslint-config-prettier": "^8.5.0",
+    "jest": "^28.0.3",
+    "knex": "^2.0.0",
+    "prettier": "^2.6.2",
+    "typescript": "^4.6.4"
   },
   "jest": {
     "testEnvironment": "node",
