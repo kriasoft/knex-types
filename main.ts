@@ -246,6 +246,7 @@ export function getType(
     case "smallint":
     case "integer":
     case "int":
+    case "int2":
     case "int4":
     case "real":
     case "float":
