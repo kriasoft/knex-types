@@ -104,22 +104,22 @@ test("updateTypes", async function () {
     "// The TypeScript definitions below are automatically generated.
     // Do not touch them, or risk, your modifications being lost.
 
-    import { PostgresInterval} from \\"postgres-interval\\";
+    import { PostgresInterval} from "postgres-interval";
 
     export enum IdentityProvider {
-      Google = \\"google\\",
-      Facebook = \\"facebook\\",
-      LinkedIn = \\"linkedin\\",
+      Google = "google",
+      Facebook = "facebook",
+      LinkedIn = "linkedin",
     }
 
     export enum Table {
-      LogMessages = \\"log.messages\\",
-      User = \\"user\\",
+      LogMessages = "log.messages",
+      User = "user",
     }
 
     export type Tables = {
-      \\"log.messages\\": LogMessages,
-      \\"user\\": User,
+      "log.messages": LogMessages,
+      "user": User,
     };
 
     export type LogMessages = {
@@ -174,9 +174,9 @@ test("updateTypes", async function () {
       time_null: string | null;
       time_array: string[];
       interval: PostgresInterval;
-      \\"display name\\": string | null;
-      \\"1invalidIdentifierName\\": string | null;
-      \\"name with a \\\\\\"\\": string | null;
+      "display name": string | null;
+      "1invalidIdentifierName": string | null;
+      "name with a \\"": string | null;
     };
 
     // user supplied suffix
