@@ -38,7 +38,7 @@
     "test": "jest",
     "build": "babel --env-name production -x \".ts\" --out-dir . \"*.ts\" && tsc && rm *.test.d.ts && prettier --write ."
   },
-  "packageManager": "yarn@4.0.0-rc.4",
+  "packageManager": "yarn@4.0.0-rc.32",
   "dependencies": {
     "lodash": "^4.17.21",
     "pg": "^8.7.3"
