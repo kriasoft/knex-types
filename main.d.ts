@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import { Knex } from "knex";
 import type { Writable } from "stream";
-export declare type Options = {
+export type Options = {
   /**
    * Filename or output stream where the type definitions needs to be written.
    */
