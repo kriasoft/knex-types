@@ -37,23 +37,21 @@ async function updateTypes(db, options) {
     // Fetch the list of custom enum types
     const enums = await db.table("pg_type").join("pg_enum", "pg_enum.enumtypid", "pg_type.oid").orderBy("pg_type.typname").orderBy("pg_enum.enumsortorder").select("pg_type.typname as key", "pg_enum.enumlabel as value");
 
-    // Construct TypeScript enum types
+    // Construct TypeScript type union from enum
     enums.forEach((x, i) => {
-      var _overrides;
       // The first line of enum declaration
       if (!(enums[i - 1] && enums[i - 1].key === x.key)) {
         var _overrides$x$key;
         const enumName = (_overrides$x$key = overrides[x.key]) !== null && _overrides$x$key !== void 0 ? _overrides$x$key : (0, _upperFirst2.default)((0, _camelCase2.default)(x.key));
-        output.write(`export enum ${enumName} {\n`);
+        output.write(`export type ${enumName} = ${x.value}`);
+      } else {
+        // Enum body
+        output.write(` | "${x.value}"`);
       }
-
-      // Enum body
-      const key = (_overrides = overrides[`${x.key}.${x.value}`]) !== null && _overrides !== void 0 ? _overrides : (0, _upperFirst2.default)((0, _camelCase2.default)(x.value.replace(/[.-]/g, "_")));
-      output.write(`  ${key} = "${x.value}",\n`);
 
       // The closing line
       if (!(enums[i + 1] && enums[i + 1].key === x.key)) {
-        output.write("}\n\n");
+        output.write(";\n");
       }
     });
     const enumsMap = new Map(enums.map(x => {

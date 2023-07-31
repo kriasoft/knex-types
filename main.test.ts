@@ -4,7 +4,6 @@
 import { knex } from "knex";
 import { PassThrough } from "stream";
 import { updateTypes } from "./main";
-
 const db = knex({ client: "pg", connection: { database: "update_types" } });
 
 beforeAll(async function setup() {
@@ -106,11 +105,7 @@ test("updateTypes", async function () {
 
     import { PostgresInterval} from "postgres-interval";
 
-    export enum IdentityProvider {
-      Google = "google",
-      Facebook = "facebook",
-      LinkedIn = "linkedin",
-    }
+    export type IdentityProvider = "google" | "facebook" | "linkedin";
 
     export enum Table {
       LogMessages = "log.messages",
@@ -188,8 +183,10 @@ async function createDatabase(): Promise<void> {
   try {
     await db.select(db.raw("version()")).first();
   } catch (err) {
+    console.log(err);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if (err instanceof Error && (err as any).code !== "3D000") throw err;
+    console.log("doing some shit");
     // Create a new test database if it doesn't exist
     const tmp = knex({ client: "pg", connection: { database: "template1" } });
     try {
