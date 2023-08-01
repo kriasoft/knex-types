@@ -43,7 +43,7 @@ async function updateTypes(db, options) {
       if (!(enums[i - 1] && enums[i - 1].key === x.key)) {
         var _overrides$x$key;
         const enumName = (_overrides$x$key = overrides[x.key]) !== null && _overrides$x$key !== void 0 ? _overrides$x$key : (0, _upperFirst2.default)((0, _camelCase2.default)(x.key));
-        output.write(`export type ${enumName} = ${x.value}`);
+        output.write(`export type ${enumName} = "${x.value}"`);
       } else {
         // Enum body
         output.write(` | "${x.value}"`);
@@ -51,7 +51,7 @@ async function updateTypes(db, options) {
 
       // The closing line
       if (!(enums[i + 1] && enums[i + 1].key === x.key)) {
-        output.write(";\n");
+        output.write(";\n\n");
       }
     });
     const enumsMap = new Map(enums.map(x => {
