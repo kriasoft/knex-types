@@ -1,6 +1,6 @@
 {
   "name": "@kauza/knex-types",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Generates TypeScript definitions (types) from a (PostgreSQL) database schema.",
   "keywords": [
     "database",
