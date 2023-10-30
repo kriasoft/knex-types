@@ -4,7 +4,19 @@
 import { knex } from "knex";
 import { PassThrough } from "stream";
 import { updateTypes } from "./main";
-const db = knex({ client: "pg", connection: { database: "update_types" } });
+
+const dbName = "update_types_test";
+const db_auth = {
+  user: "postgres",
+  password: "postgres",
+};
+const db = knex({
+  client: "pg",
+  connection: {
+    database: dbName,
+    ...db_auth,
+  },
+});
 
 beforeAll(async function setup() {
   await createDatabase();
@@ -183,15 +195,18 @@ async function createDatabase(): Promise<void> {
   try {
     await db.select(db.raw("version()")).first();
   } catch (err) {
-    console.log(err);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if (err instanceof Error && (err as any).code !== "3D000") throw err;
-    console.log("doing some shit");
     // Create a new test database if it doesn't exist
-    const tmp = knex({ client: "pg", connection: { database: "template1" } });
+    const tmp = knex({
+      client: "pg",
+      connection: {
+        database: "template1",
+        ...db_auth,
+      },
+    });
     try {
-      const dbName = db.client.config.connection.database;
-      await tmp.raw("create database ?", [dbName]);
+      await tmp.raw("create database ??", [dbName]);
     } finally {
       await tmp.destroy();
     }
