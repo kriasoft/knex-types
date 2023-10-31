@@ -92,7 +92,7 @@ export async function updateTypes(db: Knex, options: Options): Promise<void> {
 
   try {
     // Fetch the list of custom enum types
-    const enums = await db
+    const enums: Enum[] = await db
       .table("pg_type")
       .join("pg_enum", "pg_enum.enumtypid", "pg_type.oid")
       .orderBy("pg_type.typname")
@@ -102,17 +102,18 @@ export async function updateTypes(db: Knex, options: Options): Promise<void> {
     // Construct TypeScript type union from enum
     enums.forEach((x, i) => {
       // The first line of enum declaration
+      const enumName = overrides[x.key] ?? upperFirst(camelCase(x.key));
       if (!(enums[i - 1] && enums[i - 1].key === x.key)) {
-        const enumName = overrides[x.key] ?? upperFirst(camelCase(x.key));
-        output.write(`export type ${enumName} = "${x.value}"`);
-      } else {
-        // Enum body
-        output.write(` | "${x.value}"`);
+        output.write(`export const ${enumName} = {\n`);
       }
+
+      // Enum body
+      output.write(`  "${x.value}": "${x.value}",\n`);
 
       // The closing line
       if (!(enums[i + 1] && enums[i + 1].key === x.key)) {
-        output.write(";\n\n");
+        output.write("};\n");
+        output.write(`export type ${enumName} = keyof typeof ${enumName};\n\n`);
       }
     });
 
