@@ -23,7 +23,10 @@
     "email": "hello@kriasoft.com",
     "url": "https://kriasoft.com"
   },
-  "repository": "kauza/knex-types",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kauza/knex-types.git"
+  },
   "contributors": [
     "Konstantin Tarkus <hello@tarkus.me> (https://tarkus.me/)",
     "Jeffrey Shen <jeffrey.shen@kauza.dk>"
