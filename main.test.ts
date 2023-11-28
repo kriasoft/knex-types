@@ -117,7 +117,12 @@ test("updateTypes", async function () {
 
     import { PostgresInterval} from "postgres-interval";
 
-    export type IdentityProvider = "google" | "facebook" | "linkedin";
+    export const IdentityProvider = {
+      "google": "google",
+      "facebook": "facebook",
+      "linkedin": "linkedin",
+    };
+    export type IdentityProvider = keyof typeof IdentityProvider;
 
     export enum Table {
       LogMessages = "log.messages",
