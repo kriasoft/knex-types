@@ -70,6 +70,8 @@ beforeAll(async function setup() {
     table.time("time_null");
     table.specificType("time_array", "time[]").notNullable();
     table.specificType("interval", "interval").notNullable();
+    table.specificType("int4range", "int4range").notNullable();
+    table.specificType("int8range", "int8range").notNullable();
     table.text("display name");
     table.text("1invalidIdentifierName");
     table.text(`name with a "`);
@@ -186,6 +188,8 @@ test("updateTypes", async function () {
       time_null: string | null;
       time_array: string[];
       interval: PostgresInterval;
+      int4range: [number, number];
+      int8range: [number, number];
       "display name": string | null;
       "1invalidIdentifierName": string | null;
       "name with a \\"": string | null;

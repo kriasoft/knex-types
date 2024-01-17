@@ -270,6 +270,9 @@ export function getType(
       return "Buffer";
     case "interval":
       return "PostgresInterval";
+    case "int4range":
+    case "int8range":
+      return "[number, number]";
     default:
       return customTypes.get(udt) ?? "unknown";
   }
