@@ -14,6 +14,13 @@ $ npm install knex
 $ npm install knex-types --dev
 ```
 
+## Publishing
+
+```
+npm version <new version number>
+npm publish
+```
+
 ## Usage Example
 
 ```js
