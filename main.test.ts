@@ -5,7 +5,18 @@ import { knex } from "knex";
 import { PassThrough } from "stream";
 import { updateTypes } from "./main";
 
-const db = knex({ client: "pg", connection: { database: "update_types" } });
+const dbName = "update_types_test";
+const db_auth = {
+  user: "postgres",
+  password: "postgres",
+};
+const db = knex({
+  client: "pg",
+  connection: {
+    database: dbName,
+    ...db_auth,
+  },
+});
 
 beforeAll(async function setup() {
   await createDatabase();
@@ -15,6 +26,7 @@ beforeAll(async function setup() {
 
   await db.schema.createTable("user", (table) => {
     table.increments("int").notNullable().primary();
+    table.integer("id").notNullable().unique();
     table.specificType("provider", "identity_provider").notNullable();
     table.specificType("provider_null", "identity_provider");
     table.specificType("provider_array", "identity_provider[]").notNullable();
@@ -69,9 +81,12 @@ beforeAll(async function setup() {
   });
 
   await db.schema.withSchema("log").createTable("messages", (table) => {
-    table.increments("int").notNullable().primary();
+    table.increments("id").notNullable().primary();
     table.text("notes");
     table.timestamp("timestamp").notNullable();
+    table.integer("user_id").references("id").inTable("user").notNullable();
+
+    table.integer("user_nullable_id").references("id").inTable("user");
   });
 
   await db.schema.withSchema("secret").createTable("secret", (table) => {
@@ -106,11 +121,12 @@ test("updateTypes", async function () {
 
     import { PostgresInterval} from "postgres-interval";
 
-    export enum IdentityProvider {
-      Google = "google",
-      Facebook = "facebook",
-      LinkedIn = "linkedin",
-    }
+    export const IdentityProvider = {
+      "google": "google",
+      "facebook": "facebook",
+      "linkedin": "linkedin",
+    };
+    export type IdentityProvider = keyof typeof IdentityProvider;
 
     export enum Table {
       LogMessages = "log.messages",
@@ -123,13 +139,16 @@ test("updateTypes", async function () {
     };
 
     export type LogMessages = {
-      int: number;
+      id: number & { _brand: "LogMessages" };
       notes: string | null;
       timestamp: Date;
+      user_id: number & { _brand: "User" };
+      user_nullable_id: number & { _brand: "User" } | null;
     };
 
     export type User = {
       int: number;
+      id: number & { _brand: "User" };
       provider: IdentityProvider;
       provider_null: IdentityProvider | null;
       provider_array: IdentityProvider[];
@@ -191,10 +210,15 @@ async function createDatabase(): Promise<void> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if (err instanceof Error && (err as any).code !== "3D000") throw err;
     // Create a new test database if it doesn't exist
-    const tmp = knex({ client: "pg", connection: { database: "template1" } });
+    const tmp = knex({
+      client: "pg",
+      connection: {
+        database: "template1",
+        ...db_auth,
+      },
+    });
     try {
-      const dbName = db.client.config.connection.database;
-      await tmp.raw("create database ?", [dbName]);
+      await tmp.raw("create database ??", [dbName]);
     } finally {
       await tmp.destroy();
     }

@@ -92,30 +92,28 @@ export async function updateTypes(db: Knex, options: Options): Promise<void> {
 
   try {
     // Fetch the list of custom enum types
-    const enums = await db
+    const enums: Enum[] = await db
       .table("pg_type")
       .join("pg_enum", "pg_enum.enumtypid", "pg_type.oid")
       .orderBy("pg_type.typname")
       .orderBy("pg_enum.enumsortorder")
       .select<Enum[]>("pg_type.typname as key", "pg_enum.enumlabel as value");
 
-    // Construct TypeScript enum types
+    // Construct TypeScript type union from enum
     enums.forEach((x, i) => {
       // The first line of enum declaration
+      const enumName = overrides[x.key] ?? upperFirst(camelCase(x.key));
       if (!(enums[i - 1] && enums[i - 1].key === x.key)) {
-        const enumName = overrides[x.key] ?? upperFirst(camelCase(x.key));
-        output.write(`export enum ${enumName} {\n`);
+        output.write(`export const ${enumName} = {\n`);
       }
 
       // Enum body
-      const key =
-        overrides[`${x.key}.${x.value}`] ??
-        upperFirst(camelCase(x.value.replace(/[.-]/g, "_")));
-      output.write(`  ${key} = "${x.value}",\n`);
+      output.write(`  "${x.value}": "${x.value}",\n`);
 
       // The closing line
       if (!(enums[i + 1] && enums[i + 1].key === x.key)) {
-        output.write("}\n\n");
+        output.write("};\n");
+        output.write(`export type ${enumName} = keyof typeof ${enumName};\n\n`);
       }
     });
 
@@ -146,10 +144,102 @@ export async function updateTypes(db: Knex, options: Options): Promise<void> {
         "udt_name as udt"
       );
 
+    let keys: Key[] = [];
+
+    for (const schema of includeSchemas) {
+      // as we can't join internal tables (for some reasons) we need to fetch the keys separately
+      const keyConstraints = await db
+        .withSchema("information_schema")
+        .table("table_constraints")
+        .where("table_schema", schema)
+        .whereIn("constraint_type", ["FOREIGN KEY", "UNIQUE", "PRIMARY KEY"])
+        .select<{ constraint_name: string; constraint_type: string }[]>([
+          "constraint_name",
+          "constraint_type",
+        ]);
+
+      const keyUsage = await db
+        .withSchema("information_schema")
+        .table("key_column_usage")
+        .where("table_schema", schema)
+        .whereIn(
+          "constraint_name",
+          keyConstraints.map((x) => x.constraint_name)
+        )
+        .select<Partial<Key>[]>(
+          "table_schema as schema",
+          "table_name as table",
+          "column_name as column",
+          "constraint_name"
+        );
+
+      const columnUsage = await db
+        .withSchema("information_schema")
+        .table("constraint_column_usage")
+        .whereIn(
+          "constraint_name",
+          keyConstraints.map((x) => x.constraint_name)
+        )
+        .select<Partial<Key>[]>(
+          "table_schema as schema",
+          "table_name as table",
+          "column_name as column",
+          "constraint_name"
+        );
+
+      keys = [
+        ...keys,
+        ...keyUsage.map((key) => {
+          // look up the constraint type
+          const constraintType = keyConstraints.find(
+            (constraint) => constraint.constraint_name === key.constraint_name
+          )?.constraint_type;
+          const refSchema = columnUsage.find(
+            (column) => column.constraint_name === key.constraint_name
+          );
+          return {
+            ...key,
+            constraint_type: constraintType,
+            refSchema,
+          } as Key;
+        }),
+      ];
+    }
+
+    const columnsWithKeyInfo = columns.map((column) => {
+      return {
+        ...column,
+        is_foreign_key: keys.some(
+          (key) =>
+            key.table === column.table &&
+            key.column === column.column &&
+            key.constraint_type === "FOREIGN KEY"
+        ),
+        is_unique: keys.some(
+          (key) =>
+            key.table === column.table &&
+            key.column === column.column &&
+            key.constraint_type === "UNIQUE"
+        ),
+        is_primary_key: keys.some(
+          (key) =>
+            key.table === column.table &&
+            key.column === column.column &&
+            key.constraint_type === "PRIMARY KEY"
+        ),
+        ref_schema: keys.find(
+          (key) =>
+            key.table === column.table &&
+            key.column === column.column &&
+            key.constraint_type === "FOREIGN KEY"
+        )?.refSchema,
+      };
+    });
+
     // The list of database tables as enum
     output.write("export enum Table {\n");
     const tableSet = new Set(
-      columns.map((x) => {
+      columnsWithKeyInfo.map((x) => {
         const schema = x.schema !== "public" ? `${x.schema}.` : "";
         return `${schema}${x.table}`;
       })
@@ -168,11 +258,17 @@ export async function updateTypes(db: Knex, options: Options): Promise<void> {
     output.write("};\n\n");
 
     // Construct TypeScript db record types
-    columns.forEach((x, i) => {
-      if (!(columns[i - 1] && columns[i - 1].table === x.table)) {
-        const tableName = overrides[x.table] ?? upperFirst(camelCase(x.table));
-        const schemaName =
-          x.schema !== "public" ? upperFirst(camelCase(x.schema)) : "";
+    columnsWithKeyInfo.forEach((x, i) => {
+      const schemaName =
+        x.schema !== "public" ? upperFirst(camelCase(x.schema)) : "";
+
+      const tableName = overrides[x.table] ?? upperFirst(camelCase(x.table));
+      if (
+        !(
+          columnsWithKeyInfo[i - 1] &&
+          columnsWithKeyInfo[i - 1].table === x.table
+        )
+      ) {
         output.write(`export type ${schemaName}${tableName} = {\n`);
       }
 
@@ -181,13 +277,32 @@ export async function updateTypes(db: Knex, options: Options): Promise<void> {
           ? `${getType(x.udt.substring(1), enumsMap, x.default)}[]`
           : getType(x.udt, enumsMap, x.default);
 
+      // branding the id columns (unique and foreign keys)
+      if (x.column === "id" && (x.is_unique || x.is_primary_key)) {
+        const brandName = `${schemaName}${tableName}`;
+        type += ` & { _brand: "${brandName}" }`;
+      } else if (x.is_foreign_key && x.column.endsWith("id")) {
+        const refSchemaName =
+          x.ref_schema?.schema !== "public"
+            ? upperFirst(camelCase(x.ref_schema?.schema))
+            : "";
+        const refTableName = upperFirst(camelCase(x.ref_schema?.table));
+        const brandName = `${refSchemaName}${refTableName}`;
+        type += ` & { _brand: "${brandName}" }`;
+      }
+
       if (x.nullable) {
         type += " | null";
       }
 
       output.write(`  ${sanitize(x.column)}: ${type};\n`);
 
-      if (!(columns[i + 1] && columns[i + 1].table === x.table)) {
+      if (
+        !(
+          columnsWithKeyInfo[i + 1] &&
+          columnsWithKeyInfo[i + 1].table === x.table
+        )
+      ) {
         output.write("};\n\n");
       }
     });
@@ -212,9 +327,23 @@ type Column = {
   column: string;
   schema: string;
   nullable: boolean;
+  unique: boolean;
   default: string | null;
   type: string;
   udt: string;
+};
+
+type Key = {
+  schema: string;
+  table: string;
+  column: string;
+  constraint_name: string;
+  constraint_type: string;
+  refSchema?: {
+    schema: string;
+    table: string;
+    column: string;
+  };
 };
 
 export function getType(

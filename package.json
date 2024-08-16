@@ -1,6 +1,6 @@
 {
-  "name": "knex-types",
-  "version": "0.5.0",
+  "name": "@kauza/knex-types",
+  "version": "3.0.4",
   "description": "Generates TypeScript definitions (types) from a (PostgreSQL) database schema.",
   "keywords": [
     "database",
@@ -23,20 +23,21 @@
     "email": "hello@kriasoft.com",
     "url": "https://kriasoft.com"
   },
-  "repository": "kriasoft/knex-types",
-  "contributors": [
-    "Konstantin Tarkus <hello@tarkus.me> (https://tarkus.me/)"
-  ],
-  "funding": {
-    "type": "patreon",
-    "url": "https://patreon.com/koistya"
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kauza/knex-types.git"
   },
+  "contributors": [
+    "Konstantin Tarkus <hello@tarkus.me> (https://tarkus.me/)",
+    "Jeffrey Shen <jeffrey.shen@kauza.dk>"
+  ],
   "main": "main.js",
   "types": "main.d.ts",
   "scripts": {
     "lint": "eslint --report-unused-disable-directives .",
     "test": "jest",
-    "build": "babel --env-name production -x \".ts\" --out-dir . \"*.ts\" && tsc && rm *.test.d.ts && prettier --write ."
+    "build": "npm run lint && prettier --write . && tsc && babel --env-name production -x \".ts\" --out-dir . \"*.ts\"",
+    "prepare": "npm run build"
   },
   "packageManager": "yarn@4.0.0-rc.32",
   "dependencies": {
