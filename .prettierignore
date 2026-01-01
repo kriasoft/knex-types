@@ -1,4 +1,4 @@
 /.yarn
-/.pnp.cjs
+/.pnp.*
 /main.js
 /tsconfig.json

@@ -1,10 +1,10 @@
 /* SPDX-FileCopyrightText: 2016-present Kriasoft <hello@kriasoft.com> */
 /* SPDX-License-Identifier: MIT */
 
-import fs from 'fs';
-import { Knex } from 'knex';
-import { camelCase, upperFirst } from 'lodash';
-import type { Writable } from 'stream';
+import fs from "fs";
+import { Knex } from "knex";
+import { camelCase, upperFirst } from "lodash";
+import type { Writable } from "stream";
 
 export type Options = {
   /**
@@ -184,45 +184,45 @@ export type Options = {
 export async function updateTypes(db: Knex, options: Options): Promise<void> {
   const overrides = options.overrides ?? {};
   const output: Writable =
-    typeof options.output === 'string'
-      ? fs.createWriteStream(options.output, { encoding: 'utf-8' })
+    typeof options.output === "string"
+      ? fs.createWriteStream(options.output, { encoding: "utf-8" })
       : options.output;
 
   [
-    '// The TypeScript definitions below are automatically generated.\n',
-    '// Do not touch them, or risk, your modifications being lost.\n\n',
+    "// The TypeScript definitions below are automatically generated.\n",
+    "// Do not touch them, or risk, your modifications being lost.\n\n",
   ].forEach((line) => output.write(line));
 
-  const schema = (typeof options.schema === 'string'
-    ? options.schema.split(',').map((x) => x.trim())
-    : options.schema) ?? ['public'];
+  const schema = (typeof options.schema === "string"
+    ? options.schema.split(",").map((x) => x.trim())
+    : options.schema) ?? ["public"];
 
   // Schemas to include or exclude
   const [includeSchemas, excludeSchemas] = schema.reduce(
     (acc, s) =>
-      (acc[+s.startsWith('!')].push(s) && acc) as [string[], string[]],
+      (acc[+s.startsWith("!")].push(s) && acc) as [string[], string[]],
     [[] as string[], [] as string[]]
   );
 
   // Tables to exclude
   const exclude =
-    (typeof options.exclude === 'string'
-      ? options.exclude.split(',').map((x) => x.trim())
+    (typeof options.exclude === "string"
+      ? options.exclude.split(",").map((x) => x.trim())
       : options.exclude) ?? [];
 
   if (options.prefix) {
     output.write(options.prefix);
-    output.write('\n\n');
+    output.write("\n\n");
   }
 
   try {
     // Fetch the list of custom enum types
     const enums = await db
-      .table('pg_type')
-      .join('pg_enum', 'pg_enum.enumtypid', 'pg_type.oid')
-      .orderBy('pg_type.typname')
-      .orderBy('pg_enum.enumsortorder')
-      .select<Enum[]>('pg_type.typname as key', 'pg_enum.enumlabel as value');
+      .table("pg_type")
+      .join("pg_enum", "pg_enum.enumtypid", "pg_type.oid")
+      .orderBy("pg_type.typname")
+      .orderBy("pg_enum.enumsortorder")
+      .select<Enum[]>("pg_type.typname as key", "pg_enum.enumlabel as value");
 
     // Construct TypeScript enum types
     enums.forEach((x, i) => {
@@ -235,12 +235,12 @@ export async function updateTypes(db: Knex, options: Options): Promise<void> {
       // Enum body
       const key =
         overrides[`${x.key}.${x.value}`] ??
-        upperFirst(camelCase(x.value.replace(/[.-]/g, '_')));
+        upperFirst(camelCase(x.value.replace(/[.-]/g, "_")));
       output.write(`  ${key} = "${x.value}",\n`);
 
       // The closing line
       if (!(enums[i + 1] && enums[i + 1].key === x.key)) {
-        output.write('};\n\n');
+        output.write("};\n\n");
       }
     });
 
@@ -253,26 +253,26 @@ export async function updateTypes(db: Knex, options: Options): Promise<void> {
 
     // Fetch the list of tables/columns
     const columns = await db
-      .withSchema('information_schema')
-      .table('columns')
-      .whereIn('table_schema', includeSchemas)
-      .whereNotIn('table_schema', excludeSchemas)
-      .whereNotIn('table_name', exclude)
-      .orderBy('table_schema')
-      .orderBy('table_name')
-      .orderBy('ordinal_position')
+      .withSchema("information_schema")
+      .table("columns")
+      .whereIn("table_schema", includeSchemas)
+      .whereNotIn("table_schema", excludeSchemas)
+      .whereNotIn("table_name", exclude)
+      .orderBy("table_schema")
+      .orderBy("table_name")
+      .orderBy("ordinal_position")
       .select<Column[]>(
-        'table_schema as schema',
-        'table_name as table',
-        'column_name as column',
+        "table_schema as schema",
+        "table_name as table",
+        "column_name as column",
         db.raw("(is_nullable = 'YES') as nullable"),
-        'column_default as default',
-        'data_type as type',
-        'udt_name as udt'
+        "column_default as default",
+        "data_type as type",
+        "udt_name as udt"
       );
 
     // The list of database tables as enum
-    output.write(`export enum ${options.tablesEnumName || 'Table'} {\n`);
+    output.write(`export enum ${options.tablesEnumName || "Table"} {\n`);
 
     // Unique schema / table combination array
     const tables: { table: string; schema: string }[] = [
@@ -289,20 +289,20 @@ export async function updateTypes(db: Knex, options: Options): Promise<void> {
       )!;
 
       const tableName =
-        overrideName(x, 'table', overrides) ?? upperFirst(camelCase(x.table));
+        overrideName(x, "table", overrides) ?? upperFirst(camelCase(x.table));
       let schemaName =
-        x.schema !== 'public' ? upperFirst(camelCase(x.schema)) : '';
-      schemaName = overrideName(x, 'schema', overrides) ?? schemaName;
+        x.schema !== "public" ? upperFirst(camelCase(x.schema)) : "";
+      schemaName = overrideName(x, "schema", overrides) ?? schemaName;
       const key = `${schemaName}${tableName}`;
 
-      const schema = x.schema !== 'public' ? `${x.schema}.` : '';
+      const schema = x.schema !== "public" ? `${x.schema}.` : "";
       const value = `${schema}${x.table}`;
       output.write(`  ${key} = "${value}",\n`);
     }
-    output.write('};\n\n');
+    output.write("};\n\n");
 
     // Write the list of tables as a type
-    output.write(`export type ${options.tablesTypeName || 'Tables'} = {\n`);
+    output.write(`export type ${options.tablesTypeName || "Tables"} = {\n`);
     for (const table of tables) {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       const x = columns.find(
@@ -310,17 +310,17 @@ export async function updateTypes(db: Knex, options: Options): Promise<void> {
       )!;
 
       const tableName =
-        overrideName(x, 'table', overrides) ?? upperFirst(camelCase(x.table));
+        overrideName(x, "table", overrides) ?? upperFirst(camelCase(x.table));
       let schemaName =
-        x.schema !== 'public' ? upperFirst(camelCase(x.schema)) : '';
-      schemaName = overrideName(x, 'schema', overrides) ?? schemaName;
+        x.schema !== "public" ? upperFirst(camelCase(x.schema)) : "";
+      schemaName = overrideName(x, "schema", overrides) ?? schemaName;
       const key = `${schemaName}${tableName}`;
 
-      const schema = x.schema !== 'public' ? `${x.schema}.` : '';
+      const schema = x.schema !== "public" ? `${x.schema}.` : "";
       const value = `${schema}${x.table}`;
       output.write(`  "${value}": ${key},\n`);
     }
-    output.write('};\n\n');
+    output.write("};\n\n");
 
     // Construct TypeScript db record types
     columns.forEach((x, i) => {
@@ -331,23 +331,23 @@ export async function updateTypes(db: Knex, options: Options): Promise<void> {
       // Export schema & table type
       if (isTableFirstColumn) {
         const tableName =
-          overrideName(x, 'table', overrides) ?? upperFirst(camelCase(x.table));
+          overrideName(x, "table", overrides) ?? upperFirst(camelCase(x.table));
 
         // Doing it this way because I need to separate the trinary expression from the ?? operator (doesn't work).
         let schemaName =
-          x.schema !== 'public' ? upperFirst(camelCase(x.schema)) : '';
-        schemaName = overrideName(x, 'schema', overrides) ?? schemaName;
+          x.schema !== "public" ? upperFirst(camelCase(x.schema)) : "";
+        schemaName = overrideName(x, "schema", overrides) ?? schemaName;
 
         output.write(`export type ${schemaName}${tableName} = {\n`);
       }
 
       // Set column type
-      const columnName = overrideName(x, 'column', overrides) ?? x.column;
-      const isArrayType = x.type === 'ARRAY';
+      const columnName = overrideName(x, "column", overrides) ?? x.column;
+      const isArrayType = x.type === "ARRAY";
       let type = overrideType(x, options) ?? getType(x, enumsMap);
 
-      if (isArrayType) type += '[]';
-      if (x.nullable) type += ' | null';
+      if (isArrayType) type += "[]";
+      if (x.nullable) type += " | null";
 
       // Process the "*" type override if provided
       type = typePostProcessor(x, type, options);
@@ -355,13 +355,13 @@ export async function updateTypes(db: Knex, options: Options): Promise<void> {
       output.write(`  ${sanitize(columnName)}: ${type};\n`);
 
       if (!(columns[i + 1] && columns[i + 1].table === x.table)) {
-        output.write('};\n\n');
+        output.write("};\n\n");
       }
     });
 
     if (options.suffix) {
       output.write(options.suffix);
-      output.write('\n');
+      output.write("\n");
     }
   } finally {
     output.end();
@@ -385,7 +385,7 @@ export type Column = {
 };
 
 export type NameOverrideCategory = keyof Column &
-  ('table' | 'schema' | 'column');
+  ("table" | "schema" | "column");
 export type OverrideStringFunction =
   | string
   | ((
@@ -396,64 +396,65 @@ export type OverrideStringFunction =
 
 export type TypeOverride = Record<string, string | ((x: Column) => string)>;
 export type TypePostProcessor = Record<
-  '*',
+  "*",
   string | ((x: Column, defaultType: string) => string)
 >;
 
 export function getType(x: Column, customTypes: Map<string, string>): string {
-  const udt: string = x.type === 'ARRAY' ? x.udt.substring(1) : x.udt;
+  const udt: string = x.type === "ARRAY" ? x.udt.substring(1) : x.udt;
 
   switch (udt) {
-    case 'bool':
-      return 'boolean';
-    case 'text':
-    case 'citext':
-    case 'money':
-    case 'numeric':
-    case 'int8':
-    case 'char':
-    case 'character':
-    case 'bpchar':
-    case 'varchar':
-    case 'time':
-    case 'tsquery':
-    case 'tsvector':
-    case 'uuid':
-    case 'xml':
-    case 'cidr':
-    case 'inet':
-    case 'macaddr':
-      return 'string';
-    case 'smallint':
-    case 'integer':
-    case 'int':
-    case 'int4':
-    case 'real':
-    case 'float':
-    case 'float4':
-    case 'float8':
-      return 'number';
-    case 'date':
-    case 'timestamp':
-    case 'timestamptz':
-      return 'Date';
-    case 'json':
-    case 'jsonb':
+    case "bool":
+      return "boolean";
+    case "text":
+    case "citext":
+    case "money":
+    case "numeric":
+    case "int8":
+    case "char":
+    case "character":
+    case "bpchar":
+    case "varchar":
+    case "time":
+    case "tsquery":
+    case "tsvector":
+    case "uuid":
+    case "xml":
+    case "cidr":
+    case "inet":
+    case "macaddr":
+      return "string";
+    case "smallint":
+    case "integer":
+    case "int":
+    case "int2":
+    case "int4":
+    case "real":
+    case "float":
+    case "float4":
+    case "float8":
+      return "number";
+    case "date":
+    case "timestamp":
+    case "timestamptz":
+      return "Date";
+    case "json":
+    case "jsonb":
       if (x.default) {
         if (x.default.startsWith("'{")) {
-          return 'Record<string, unknown>';
+          return "Record<string, unknown>";
         }
         if (x.default.startsWith("'[")) {
-          return 'unknown[]';
+          return "unknown[]";
         }
       }
-      return 'unknown';
-    case 'bytea':
-      return 'Buffer';
-    case 'interval':
-      return 'PostgresInterval';
+      return "unknown";
+    case "bytea":
+      return "Buffer";
+    case "interval":
+      return "PostgresInterval";
     default:
-      return customTypes.get(udt) ?? 'unknown';
+      return customTypes.get(udt) ?? "unknown";
   }
 }
 
@@ -491,7 +492,7 @@ export function overrideType(x: Column, options: Options): string | null {
 
   // Override the database's default type if provided.
   const overrideDefaultTypes = options.overrideDefaultTypes ?? true;
-  const udt = x.type === 'ARRAY' ? x.udt.substring(1) : x.udt;
+  const udt = x.type === "ARRAY" ? x.udt.substring(1) : x.udt;
   if (overrideDefaultTypes && udt in typeOverrides) {
     const type = typeOverrides[udt];
     return isFunction(type) ? type(x) : type;
@@ -514,10 +515,10 @@ export function typePostProcessor(
   const typeOverrides = options.typeOverrides ?? {};
 
   // If the "*" has been provided, return its value.
-  if ('*' in typeOverrides) {
-    return isFunction(typeOverrides['*'])
-      ? typeOverrides['*'](x, type)
-      : typeOverrides['*'];
+  if ("*" in typeOverrides) {
+    return isFunction(typeOverrides["*"])
+      ? typeOverrides["*"](x, type)
+      : typeOverrides["*"];
   }
 
   // Return the default type
@@ -526,7 +527,7 @@ export function typePostProcessor(
 
 // eslint-disable-next-line @typescript-eslint/ban-types
 function isFunction(value: unknown): value is Function {
-  return typeof value === 'function';
+  return typeof value === "function";
 }
 
 export function overrideName(
@@ -537,7 +538,7 @@ export function overrideName(
   let name: string | null = null;
   const defaultValue = x[category];
 
-  if (category === 'column') {
+  if (category === "column") {
     // Run override for specific table column
     if (`${x.table}.${x.column}` in overrides) {
       const override = overrides[`${x.table}.${x.column}`];
@@ -561,10 +562,10 @@ export function overrideName(
     }
   }
 
-  if ('*' in overrides) {
-    name = isFunction(overrides['*'])
-      ? overrides['*'](x, category, name)
-      : overrides['*'];
+  if ("*" in overrides) {
+    name = isFunction(overrides["*"])
+      ? overrides["*"](x, category, name)
+      : overrides["*"];
   }
 
   return name;

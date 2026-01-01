@@ -29,6 +29,10 @@ beforeAll(async function setup() {
     table.specificType('float_array', 'float4[]').notNullable();
     table.specificType('money', 'money').notNullable();
     table.bigInteger('bigint').notNullable();
+    table.smallint('smallint').notNullable();
+    table.specificType('int2', 'int2').notNullable();
+    table.specificType('int4', 'int4').notNullable();
+    table.specificType('int8', 'int8').notNullable();
     table.binary('binary').notNullable();
     table.binary('binary_null');
     table.specificType('binary_array', 'bytea[]').notNullable();
@@ -103,22 +107,19 @@ test('updateTypes', async function () {
     "// The TypeScript definitions below are automatically generated.
     // Do not touch them, or risk, your modifications being lost.
 
-    import { PostgresInterval} from \\"postgres-interval\\";
-
+    import { PostgresInterval} from "postgres-interval";
     export enum IdentityProvider {
-      Google = \\"google\\",
-      Facebook = \\"facebook\\",
-      LinkedIn = \\"linkedin\\",
-    };
-
+      Google = "google",
+      Facebook = "facebook",
+      LinkedIn = "linkedin",
+    }
     export enum Table {
-      LogMessages = \\"log.messages\\",
-      User = \\"user\\",
-    };
-
+      LogMessages = "log.messages",
+      User = "user",
+    }
     export type Tables = {
-      \\"log.messages\\": LogMessages,
-      \\"user\\": User,
+      "log.messages": LogMessages,
+      "user": User,
     };
 
     export type LogMessages = {
@@ -142,6 +143,10 @@ test('updateTypes', async function () {
       float_array: number[];
       money: string;
       bigint: string;
+      smallint: number;
+      int2: number;
+      int4: number;
+      int8: string;
       binary: Buffer;
       binary_null: Buffer | null;
       binary_array: Buffer[];
@@ -169,9 +174,9 @@ test('updateTypes', async function () {
       time_null: string | null;
       time_array: string[];
       interval: PostgresInterval;
-      \\"display name\\": string | null;
-      \\"1invalidIdentifierName\\": string | null;
-      \\"name with a \\\\\\"\\": string | null;
+      "display name": string | null;
+      "1invalidIdentifierName": string | null;
+      "name with a \\"": string | null;
     };
 
     // user supplied suffix

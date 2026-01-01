@@ -2,7 +2,7 @@
 .vscode
 .yarn
 .eslintrc.js
-.pnp.cjs
+.pnp.*
 .prettierignore
 .yarnrc.yml
 babel.config.js
